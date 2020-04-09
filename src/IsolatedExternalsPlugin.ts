@@ -17,23 +17,35 @@ export interface ExternalInfo {
   loaded?: boolean;
 }
 
-export interface Externals {
+export interface ExternalsObject {
   [key: string]: ExternalInfo;
+}
+
+export interface Externals {
+  [key: string]: ExternalsObject;
+}
+
+interface Entrypoint {
+  runtimeChunk: {
+    files: string[];
+  };
 }
 
 const readFile = promisify(fs.readFile);
 
 type IsolatedExternalsConfig = {
-  [key: string]: { url: string };
+  [key: string]: {
+    [key: string]: { url: string };
+  };
 };
 
-function wrapApp(source: Source | string, externals: Externals): ConcatSource {
+function wrapApp(
+  source: Source | string,
+  externals: ExternalsObject
+): ConcatSource {
   const externalsList = Object.entries(externals);
   const varNames = externalsList
-    .map(
-      /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-      ([key, external]) => `var ${external.name} = context.${external.name};`
-    )
+    .map(([, external]) => `var ${external.name} = context.${external.name};`)
     .join(' ');
   const wrappedSource = new ConcatSource(
     `function app(context){`,
@@ -54,7 +66,7 @@ async function addLoadExternals(
 
 function callLoadExternals(
   source: Source | string,
-  externals: Externals
+  externals: ExternalsObject
 ): ConcatSource {
   const externalsObj = JSON.stringify(externals);
   const loadCall = `loadExternals(${externalsObj},`;
@@ -76,18 +88,15 @@ function getConfigExternals(
   );
   const finalExternals = externalsObjects.map(external => {
     const entries = Object.entries(external);
-    return (
-      entries
-        /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-        .filter(([key, value]) => typeof value === 'string')
-        .reduce<ExternalsObjectElement>(
-          (final: ExternalsObjectElement, [key, value]: [string, string]) => ({
-            ...final,
-            [key]: value
-          }),
-          {}
-        )
-    );
+    return entries
+      .filter(([, value]) => typeof value === 'string')
+      .reduce<ExternalsObjectElement>(
+        (final: ExternalsObjectElement, [key, value]: [string, string]) => ({
+          ...final,
+          [key]: value
+        }),
+        {}
+      );
   });
   const finalElement = finalExternals.reduce<ExternalsObjectElement>(
     (finalObj: ExternalsObjectElement, obj: ExternalsObjectElement) => ({
@@ -104,19 +113,43 @@ function getExternals(
   compilerExternals: ExternalsObjectElement
 ): Externals {
   const externals = Object.entries(config).reduce<Externals>(
-    (
-      finalExternals: Externals,
-      [key, configExternal]: [string, { url: string }]
-    ) => ({
-      ...finalExternals,
-      [key]: {
-        name: compilerExternals[key] as string,
-        ...configExternal
-      }
-    }),
+    (finalExternals: Externals, [entryName, external]) => {
+      const externalContent = Object.entries(external).reduce<ExternalsObject>(
+        (
+          finalItems: ExternalsObject,
+          [externalName, configExternal]: [string, { url: string }]
+        ) => ({
+          ...finalItems,
+          [externalName]: {
+            name: compilerExternals[externalName] as string,
+            ...configExternal
+          }
+        }),
+        {} as ExternalsObject
+      );
+      return {
+        ...finalExternals,
+        [entryName]: externalContent
+      };
+    },
     {} as Externals
   );
   return externals;
+}
+
+function getTargetAssets(
+  comp: Compilation,
+  config: IsolatedExternalsConfig,
+  externals: Externals
+): [string, Source | string][] {
+  const entrypoints = Object.keys(externals)
+    .filter(key => !!comp.entrypoints.get(key))
+    .map<Entrypoint>(key => comp.entrypoints.get(key) as Entrypoint);
+  const assets = Object.entries<Source | string>(comp.assets);
+  const targetAssets = assets.filter(([name]) =>
+    entrypoints.some(point => point.runtimeChunk.files.includes(name))
+  );
+  return targetAssets;
 }
 
 export default class IsolatedExternalsPlugin {
@@ -130,17 +163,23 @@ export default class IsolatedExternalsPlugin {
           compiler.options.externals || {}
         );
         const externals = getExternals(this.config, compilerExternals);
-        const assets = Object.entries(comp.assets);
-        const targetAssets = assets.filter(([name]) => name.endsWith('.js'));
-        for (const pieces of targetAssets) {
-          const [name, asset] = pieces;
-          const source = asset as Source;
-          const wrappedAsset = wrapApp(source, externals);
-          const loadableAsset = await addLoadExternals(wrappedAsset);
-          const calledAsset = callLoadExternals(loadableAsset, externals);
-          const selfInvokingAssset = selfInvoke(calledAsset);
-          // @ts-ignore Error:(130, 27) TS2339: Property 'updateAsset' does not exist on type 'Compilation'.
-          comp.updateAsset(name, selfInvokingAssset);
+        const targetAssets = getTargetAssets(comp, this.config, externals);
+
+        const externalObjects = Object.entries(externals);
+        for (const [, externalsObject] of externalObjects) {
+          for (const pieces of targetAssets) {
+            const [name, asset] = pieces;
+            const source = asset as Source;
+            const wrappedAsset = wrapApp(source, externalsObject);
+            const loadableAsset = await addLoadExternals(wrappedAsset);
+            const calledAsset = callLoadExternals(
+              loadableAsset,
+              externalsObject
+            );
+            const selfInvokingAssset = selfInvoke(calledAsset);
+            // @ts-ignore Error:(130, 27) TS2339: Property 'updateAsset' does not exist on type 'Compilation'.
+            comp.updateAsset(name, selfInvokingAssset);
+          }
         }
       }
     );
