@@ -36,7 +36,7 @@ For the `externals` above, your `IsolatedExternalsPlugin` cofniguration might lo
 
 ```javascript
 new IsolatedExternalsPlugin({
-  moduleName: {
+  entryName: {
     react: {
       url: 'https://unpkg.com/react@16/umd/react.development.js'
     },
