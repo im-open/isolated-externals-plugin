@@ -13,7 +13,7 @@ npm install --save isolated-externals-plugin
 
 ## Usage
 
-The `IsolatedExternalsPlugin` allows you to load external dependencies into the scope of your webpack bundle without having to have them in your global scope.
+The `IsolatedExternalsPlugin` allows you to load external dependencies into the scope of your webpack bundle without having to have them in your global scope. If you're curious about why you might want this, there are [some use cases listed below](#why-load-externals-locally-instead-of-globally).
 
 The plugin is built as an ES Module, so you'll need to load it in by using the `default` property:
 
