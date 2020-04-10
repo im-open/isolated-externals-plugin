@@ -145,7 +145,7 @@ function getTargetAssets(
   externals: IsolatedExternals
 ): [string, Source | string][] {
   const entrypoints = Object.keys(externals)
-    .filter(key => !!comp.entrypoints.get(key))
+    .filter(key => comp.entrypoints.has(key))
     .map<Entrypoint>(key => comp.entrypoints.get(key) as Entrypoint);
   const assets = Object.entries<Source | string>(comp.assets);
   const targetAssets = assets.filter(([name]) =>
@@ -169,8 +169,7 @@ export default class IsolatedExternalsPlugin {
 
         const externalObjects = Object.entries(externals);
         for (const [, externalsObject] of externalObjects) {
-          for (const pieces of targetAssets) {
-            const [name, asset] = pieces;
+          for (const [name, asset] of targetAssets) {
             const source = asset as Source;
             const wrappedAsset = wrapApp(source, externalsObject);
             const loadableAsset = await addLoadExternals(wrappedAsset);

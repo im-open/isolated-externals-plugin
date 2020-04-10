@@ -32,7 +32,7 @@ It currently only works with UMD javascript dependencies, and with an `externals
   ...
 ```
 
-For the `externals` above, your `IsolatedExternalsPlugin` cofniguration might look like the following:
+For the `externals` above, your `IsolatedExternalsPlugin` configuration might look like the following:
 
 ```javascript
 new IsolatedExternalsPlugin({
@@ -47,7 +47,7 @@ new IsolatedExternalsPlugin({
 });
 ```
 
-The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list the ones the dependencies depend on first.
+The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list the ones they depend on first.
 
 ## How It Works
 
