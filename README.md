@@ -47,7 +47,7 @@ new IsolatedExternalsPlugin({
 });
 ```
 
-The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list them first.
+The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list the ones the dependencies depend on first.
 
 ## How It Works
 
@@ -58,7 +58,7 @@ The external files will be loaded and applied to your context in the order that 
 Here are two valid use cases. There may be others, but these are the reason we built this plugin!:
 
 1. You want to load different javascript apps on the same page with different versions of the same dependency (like React).
-2. You want to load more than one javascript app onto the same page with the same dependency, but ignorant each other and the global context (like in micro frontends). This case leverages browser caching to allow each app to be small in byte size, but to load the same libraries more than once on the page without transferring them more than once over the wire
+2. You want to load more than one javascript app onto the same page with the same dependency, but ignorant each of other and the global context (like in micro frontends). This case leverages browser caching to allow each app to be small in byte size, but to load the same libraries more than once on the page without transferring them more than once over the wire
 
 ## Contributing
 
