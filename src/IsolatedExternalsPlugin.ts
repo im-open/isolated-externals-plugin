@@ -11,18 +11,18 @@ import { ConcatSource, Source } from 'webpack-sources';
 
 import Compilation = compilation.Compilation;
 
-export interface ExternalInfo {
+export interface IsolatedExternalInfo {
   name: string;
   url: string;
   loaded?: boolean;
 }
 
-export interface ExternalsObject {
-  [key: string]: ExternalInfo;
+export interface IsolatedExternalsElement {
+  [key: string]: IsolatedExternalInfo;
 }
 
-export interface Externals {
-  [key: string]: ExternalsObject;
+export interface IsolatedExternals {
+  [key: string]: IsolatedExternalsElement;
 }
 
 interface Entrypoint {
@@ -41,7 +41,7 @@ type IsolatedExternalsConfig = {
 
 function wrapApp(
   source: Source | string,
-  externals: ExternalsObject
+  externals: IsolatedExternalsElement
 ): ConcatSource {
   const externalsList = Object.entries(externals);
   const varNames = externalsList
@@ -66,7 +66,7 @@ async function addLoadExternals(
 
 function callLoadExternals(
   source: Source | string,
-  externals: ExternalsObject
+  externals: IsolatedExternalsElement
 ): ConcatSource {
   const externalsObj = JSON.stringify(externals);
   const loadCall = `loadExternals(${externalsObj},`;
@@ -109,30 +109,32 @@ function getConfigExternals(
 }
 
 function getExternals(
-  config: IsolatedExternalsConfig,
+  pluginConfig: IsolatedExternalsConfig,
   compilerExternals: ExternalsObjectElement
-): Externals {
-  const externals = Object.entries(config).reduce<Externals>(
-    (finalExternals: Externals, [entryName, external]) => {
-      const externalContent = Object.entries(external).reduce<ExternalsObject>(
+): IsolatedExternals {
+  const externals = Object.entries(pluginConfig).reduce<IsolatedExternals>(
+    (finalExternals: IsolatedExternals, [entryName, pluginExternal]) => {
+      const externalContent = Object.entries(pluginExternal).reduce<
+        IsolatedExternalsElement
+      >(
         (
-          finalItems: ExternalsObject,
-          [externalName, configExternal]: [string, { url: string }]
+          finalItems: IsolatedExternalsElement,
+          [externalName, externalConfig]: [string, { url: string }]
         ) => ({
           ...finalItems,
           [externalName]: {
             name: compilerExternals[externalName] as string,
-            ...configExternal
+            ...externalConfig
           }
         }),
-        {} as ExternalsObject
+        {} as IsolatedExternalsElement
       );
       return {
         ...finalExternals,
         [entryName]: externalContent
       };
     },
-    {} as Externals
+    {} as IsolatedExternals
   );
   return externals;
 }
@@ -140,7 +142,7 @@ function getExternals(
 function getTargetAssets(
   comp: Compilation,
   config: IsolatedExternalsConfig,
-  externals: Externals
+  externals: IsolatedExternals
 ): [string, Source | string][] {
   const entrypoints = Object.keys(externals)
     .filter(key => !!comp.entrypoints.get(key))
