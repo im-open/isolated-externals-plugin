@@ -51,14 +51,14 @@ The external files will be loaded and applied to your context in the order that 
 
 ## How It Works
 
-`IsolatedExternalsPlugin` wraps your webpack bundle in a self-calling function, evaluating the function and the external dependencies with an in-memory context object. This allows those external dependencies to only exist on that in-memory context, and will not require them to exist on the broader global context.
+`IsolatedExternalsPlugin` wraps your webpack bundle in a self-calling function, evaluating the external dependencies and your bundle with an in-memory context object. This allows those external dependencies to only exist on that in-memory context, and will not require them to exist on the broader global context.
 
 ## Why load externals locally instead of globally?
 
 Here are two valid use cases. There may be others, but these are the reason we built this plugin!:
 
 1. You want to load different javascript apps on the same page with different versions of the same dependency (like React).
-2. You want to load more than one javascript app onto the same page with the same dependency, but ignorant each of other and the global context (like in micro frontends). This case leverages browser caching to allow each app to be small in byte size, but to load the same libraries more than once on the page without transferring them more than once over the wire
+2. You want to load more than one javascript app onto the same page with the same dependency, but ignorant of each other and the global context (like in micro frontends). This case leverages browser caching to allow each app to be small in byte size, but to load the same libraries more than once on the page without transferring them more than once over the wire
 
 ## Contributing
 
