@@ -11,6 +11,48 @@ To install, simply run:
 npm install --save isolated-externals-plugin
 ```
 
+## Usage
+
+The `IsolatedExternalsPlugin` allows you to load external dependencies into the scope of your webpack bundle without having to have them in your global scope.
+
+The plugin is built as an ES Module, so you'll need to load it in by using the `default` property:
+
+```javascript
+const IsolatedExternalsPlugin = require('isolated-externals-plugin').default;
+```
+
+It currently only works with UMD javascript dependencies, and with an `externals` declaration that has a similar shape to this:
+
+```javascript
+  ...
+  externals: {
+    ["react-dom"]: "ReactDOM",
+    react: "React",
+  },
+  ...
+```
+
+For the `externals` above, your `IsolatedExternalsPlugin` cofniguration might look like the following:
+
+```javascript
+new IsolatedExternalsPlugin({
+  moduleName: {
+    react: {
+      url: 'https://unpkg.com/react@16/umd/react.development.js'
+    },
+    ['react-dom']: {
+      url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js'
+    }
+  }
+});
+```
+
+The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list them first.
+
+## How It Works
+
+`IsolatedExternalsPlugin` wraps your webpack bundle in a self-calling function, evaluating the function and the external dependencies with an in-memory context object. This allows those external dependencies to only exist on that in-memory context, and will not require them to exist on the broader global context.
+
 ## Contributing
 
 This package uses `semantic-release`. Changes will be compiled into a changelog and the package versioned, tagged and published automatically.
