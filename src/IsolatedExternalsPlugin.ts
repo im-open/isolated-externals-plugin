@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { ConcatSource, Source } from 'webpack-sources';
+import randomstring from 'randomstring';
 
 import Compilation = compilation.Compilation;
 
@@ -41,14 +42,15 @@ type IsolatedExternalsConfig = {
 
 function wrapApp(
   source: Source | string,
-  externals: IsolatedExternalsElement
+  externals: IsolatedExternalsElement,
+  appName: string
 ): ConcatSource {
   const externalsList = Object.entries(externals);
   const varNames = externalsList
     .map(([, external]) => `var ${external.name} = context.${external.name};`)
     .join(' ');
   const wrappedSource = new ConcatSource(
-    `function app(context){`,
+    `function ${appName}(context){`,
     varNames,
     source,
     `}`
@@ -66,11 +68,12 @@ async function addLoadExternals(
 
 function callLoadExternals(
   source: Source | string,
-  externals: IsolatedExternalsElement
+  externals: IsolatedExternalsElement,
+  appName: string
 ): ConcatSource {
   const externalsObj = JSON.stringify(externals);
   const loadCall = `loadExternals(${externalsObj},`;
-  const appCallback = `function (context) { app(context); }`;
+  const appCallback = `function (context) { ${appName}(context); }`;
   const closeCall = `);`;
   return new ConcatSource(source, loadCall, appCallback, closeCall);
 }
@@ -155,7 +158,10 @@ function getTargetAssets(
 }
 
 export default class IsolatedExternalsPlugin {
-  constructor(readonly config: IsolatedExternalsConfig = {}) {}
+  appName: string;
+  constructor(readonly config: IsolatedExternalsConfig = {}) {
+    this.appName = randomstring.generate(12);
+  }
 
   apply(compiler: Compiler): void {
     compiler.hooks.emit.tapPromise(
@@ -171,11 +177,12 @@ export default class IsolatedExternalsPlugin {
         for (const [, externalsObject] of externalObjects) {
           for (const [name, asset] of targetAssets) {
             const source = asset as Source;
-            const wrappedAsset = wrapApp(source, externalsObject);
+            const wrappedAsset = wrapApp(source, externalsObject, this.appName);
             const loadableAsset = await addLoadExternals(wrappedAsset);
             const calledAsset = callLoadExternals(
               loadableAsset,
-              externalsObject
+              externalsObject,
+              this.appName
             );
             const selfInvokingAssset = selfInvoke(calledAsset);
             // @ts-ignore Error:(130, 27) TS2339: Property 'updateAsset' does not exist on type 'Compilation'.
