@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "none",
+    "isolatedModules": false,
+    "outDir": "../../dist/util",
+    "resolveJsonModule": false
+  },
+  "include": ["./*.ts"],
+  "exclude": []
+}
