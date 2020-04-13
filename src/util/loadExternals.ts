@@ -25,7 +25,7 @@ function loadExternals(
     externalsObj[key].loaded = true;
     wrappedEval.call(context, content);
 
-    const finished = externalKeys.every(key => !!externalsObj[key].loaded);
+    const finished = externalKeys.every(key => externalsObj[key].loaded);
 
     if (finished) {
       onComplete(context);
