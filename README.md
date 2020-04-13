@@ -8,7 +8,7 @@
 To install, simply run:
 
 ```bash
-npm install --save isolated-externals-plugin
+npm install --save-dev isolated-externals-plugin
 ```
 
 ## Usage
