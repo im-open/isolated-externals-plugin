@@ -1,7 +1,6 @@
 interface ExternalInfo {
   name: string;
   url: string;
-  loaded?: boolean;
 }
 
 interface Externals {
@@ -13,6 +12,20 @@ function wrappedEval(content: string): any {
   return eval(content);
 }
 
+function loadExternal(
+  external: ExternalInfo,
+  onLoaded: (responseText: string) => void
+): void {
+  const request = new XMLHttpRequest();
+  const loadedFunction = function(this: XMLHttpRequest): void {
+    onLoaded(this.responseText);
+    request.removeEventListener('load', loadedFunction);
+  };
+  request.addEventListener('load', loadedFunction);
+  request.open('GET', external.url);
+  request.send();
+}
+
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 function loadExternals(
   externalsObj: Externals,
@@ -21,22 +34,19 @@ function loadExternals(
 ): void {
   const context = {};
   const externalKeys = Object.keys(externalsObj);
-  const contentLoaded = (key: string, content: string): void => {
-    externalsObj[key].loaded = true;
-    wrappedEval.call(context, content);
 
-    const finished = externalKeys.every(key => externalsObj[key].loaded);
+  const load = (index: number): void => {
+    const key = externalKeys[index];
+    loadExternal(externalsObj[key], (content: string) => {
+      wrappedEval.call(context, content);
 
-    if (finished) {
-      onComplete(context);
-    }
-  };
-  externalKeys.forEach(key => {
-    const request = new XMLHttpRequest();
-    request.addEventListener('load', function() {
-      contentLoaded(key, this.responseText);
+      const nextIndex = index + 1;
+      if (nextIndex === externalKeys.length) {
+        onComplete(context);
+      } else {
+        load(nextIndex);
+      }
     });
-    request.open('GET', externalsObj[key].url);
-    request.send();
-  });
+  };
+  load(0);
 }
