@@ -47,7 +47,10 @@ function wrapApp(
 ): ConcatSource {
   const externalsList = Object.entries(externals);
   const varNames = externalsList
-    .map(([, external]) => `var ${external.name} = context.${external.name};`)
+    .map(
+      ([, external]) =>
+        `var ${external.name} = context.${external.name} || ( window || global || self )["${external.name}"];`
+    )
     .join(' ');
   const wrappedSource = new ConcatSource(
     `function ${appName}(context){`,
