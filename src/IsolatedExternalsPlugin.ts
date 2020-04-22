@@ -160,7 +160,9 @@ function getTargetAssets(
 export default class IsolatedExternalsPlugin {
   appName: string;
   constructor(readonly config: IsolatedExternalsConfig = {}) {
-    this.appName = randomstring.generate(12);
+    this.appName =
+      randomstring.generate({ length: 1, charset: 'alphabetic' }) +
+      randomstring.generate(11);
   }
 
   apply(compiler: Compiler): void {
