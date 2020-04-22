@@ -47,12 +47,18 @@ function wrapApp(
 ): ConcatSource {
   const externalsList = Object.entries(externals);
   const varNames = externalsList
-    .map(([, external]) => `var ${external.name} = context.${external.name};`)
+    .map(
+      ([, external]) =>
+        `var ${external.name} = context.${external.name} || ( window || global || self )["${external.name}"];`
+    )
     .join(' ');
   const wrappedSource = new ConcatSource(
     `function ${appName}(context){`,
+    `\n`,
     varNames,
+    `\n`,
     source,
+    `\n`,
     `}`
   );
   return wrappedSource;
@@ -63,7 +69,7 @@ async function addLoadExternals(
 ): Promise<ConcatSource> {
   const externalsLocation = path.resolve(__dirname, 'util', 'loadExternals.js');
   const loadExternals = await readFile(externalsLocation);
-  return new ConcatSource(source, loadExternals.toString());
+  return new ConcatSource(source, `\n`, loadExternals.toString());
 }
 
 function callLoadExternals(
@@ -79,7 +85,7 @@ function callLoadExternals(
 }
 
 function selfInvoke(source: Source | string): ConcatSource {
-  return new ConcatSource(`(function() {`, source, `})()`);
+  return new ConcatSource(`(function() {`, source, `})();`);
 }
 
 function getConfigExternals(
@@ -160,7 +166,9 @@ function getTargetAssets(
 export default class IsolatedExternalsPlugin {
   appName: string;
   constructor(readonly config: IsolatedExternalsConfig = {}) {
-    this.appName = randomstring.generate(12);
+    this.appName =
+      randomstring.generate({ length: 1, charset: 'alphabetic' }) +
+      randomstring.generate(11);
   }
 
   apply(compiler: Compiler): void {

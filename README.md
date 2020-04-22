@@ -47,6 +47,8 @@ new IsolatedExternalsPlugin({
 });
 ```
 
+`entryName`, in this instance, is the name of one of your webpack [Entry Points](https://webpack.js.org/concepts/entry-points/).
+
 The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list the ones they depend on first.
 
 ## How It Works
