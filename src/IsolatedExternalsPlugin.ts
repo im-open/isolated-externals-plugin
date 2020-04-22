@@ -51,8 +51,11 @@ function wrapApp(
     .join(' ');
   const wrappedSource = new ConcatSource(
     `function ${appName}(context){`,
+    `\n`,
     varNames,
+    `\n`,
     source,
+    `\n`,
     `}`
   );
   return wrappedSource;
@@ -63,7 +66,7 @@ async function addLoadExternals(
 ): Promise<ConcatSource> {
   const externalsLocation = path.resolve(__dirname, 'util', 'loadExternals.js');
   const loadExternals = await readFile(externalsLocation);
-  return new ConcatSource(source, loadExternals.toString());
+  return new ConcatSource(source, `\n`, loadExternals.toString());
 }
 
 function callLoadExternals(
@@ -79,7 +82,7 @@ function callLoadExternals(
 }
 
 function selfInvoke(source: Source | string): ConcatSource {
-  return new ConcatSource(`(function() {`, source, `})()`);
+  return new ConcatSource(`(function() {`, source, `})();`);
 }
 
 function getConfigExternals(
