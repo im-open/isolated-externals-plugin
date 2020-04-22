@@ -1,3 +1,20 @@
+# [1.1.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.0.0...v1.1.0) (2020-04-22)
+
+
+### Docs
+
+* adding better documentation around 'entryName' in the example ([f4a4fad](https://github.com/WTW-IM/isolated-externals-plugin/commit/f4a4fad2d8168493ce10673fc2eba9e5fb297aa0))
+
+### Fix
+
+* adding line breaks to account for source map comments ([9586bd8](https://github.com/WTW-IM/isolated-externals-plugin/commit/9586bd854b11b1e8359a73db77a224ec228e2b0a))
+* ensuring random functions can't start with numbers ([577ec7f](https://github.com/WTW-IM/isolated-externals-plugin/commit/577ec7f57ed873f8026ef7d6e8dfd902f3a15f6f))
+* rearranging external loading so they always finish loading in order ([9e7c2c9](https://github.com/WTW-IM/isolated-externals-plugin/commit/9e7c2c9461bf645846abf82c44449e0116f8a66e))
+
+### Update
+
+* using the global context as default if not on local context ([c845d54](https://github.com/WTW-IM/isolated-externals-plugin/commit/c845d5406afe2a42e0f7c7140a4b51c854f24f67))
+
 # 1.0.0 (2020-04-13)
 
 
