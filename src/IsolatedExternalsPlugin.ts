@@ -10,7 +10,7 @@ import { promisify } from 'util';
 import { ConcatSource, Source } from 'webpack-sources';
 import randomstring from 'randomstring';
 
-import Compilation = compilation.Compilation;
+type Compilation = compilation.Compilation;
 
 export interface IsolatedExternalInfo {
   name: string;
@@ -65,10 +65,10 @@ function wrapApp(
 }
 
 async function addLoadExternals(
-  source: Source | string
+  source: Source | string,
+  loadExternalsLocation: string
 ): Promise<ConcatSource> {
-  const externalsLocation = path.resolve(__dirname, 'util', 'loadExternals.js');
-  const loadExternals = await readFile(externalsLocation);
+  const loadExternals = await readFile(loadExternalsLocation);
   return new ConcatSource(source, `\n`, loadExternals.toString());
 }
 
@@ -165,10 +165,17 @@ function getTargetAssets(
 
 export default class IsolatedExternalsPlugin {
   appName: string;
-  constructor(readonly config: IsolatedExternalsConfig = {}) {
+  loadExternalsLocation: string;
+  constructor(
+    readonly config: IsolatedExternalsConfig = {},
+    loadExternalsLocation?: string
+  ) {
     this.appName =
       randomstring.generate({ length: 1, charset: 'alphabetic' }) +
       randomstring.generate(11);
+    this.loadExternalsLocation =
+      loadExternalsLocation ||
+      path.resolve(__dirname, 'util', 'loadExternals.js');
   }
 
   apply(compiler: Compiler): void {
@@ -186,7 +193,10 @@ export default class IsolatedExternalsPlugin {
           for (const [name, asset] of targetAssets) {
             const source = asset as Source;
             const wrappedAsset = wrapApp(source, externalsObject, this.appName);
-            const loadableAsset = await addLoadExternals(wrappedAsset);
+            const loadableAsset = await addLoadExternals(
+              wrappedAsset,
+              this.loadExternalsLocation
+            );
             const calledAsset = callLoadExternals(
               loadableAsset,
               externalsObject,
