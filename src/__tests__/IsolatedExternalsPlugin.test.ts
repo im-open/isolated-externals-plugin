@@ -37,12 +37,13 @@ beforeEach(() => {
       ['react-dom']: 'ReactDOM',
       react: 'React'
     },
-    plugins: [thePlugin]
+    plugins: [thePlugin],
+    devtool: 'source-map'
   };
 });
 
-function getResultText(result: webpack.Stats): string {
-  const resultingSource = result.compilation.assets['component.js'];
+function getResultText(result: webpack.Stats, file = 'component.js'): string {
+  const resultingSource = result.compilation.assets[file];
   return resultingSource.source();
 }
 
@@ -61,4 +62,12 @@ it('never creates an appName that begins with a number', () => {
     const plugin = new IsolatedExternalsPlugin();
     expect(/[0-9]/.test(plugin.appName[0])).toBeFalsy();
   }
+});
+
+it('does not wrap anything other than javascript assets', done => {
+  webpack(webpackOptions, (err, result) => {
+    const resultText = getResultText(result, 'component.js.map');
+    expect(resultText).not.toContain('function loadExternals');
+    done();
+  });
 });

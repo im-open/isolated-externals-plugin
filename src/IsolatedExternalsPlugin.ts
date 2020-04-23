@@ -157,8 +157,10 @@ function getTargetAssets(
     .filter(key => comp.entrypoints.has(key))
     .map<Entrypoint>(key => comp.entrypoints.get(key) as Entrypoint);
   const assets = Object.entries<Source | string>(comp.assets);
-  const targetAssets = assets.filter(([name]) =>
-    entrypoints.some(point => point.runtimeChunk.files.includes(name))
+  const targetAssets = assets.filter(
+    ([name]) =>
+      entrypoints.some(point => point.runtimeChunk.files.includes(name)) &&
+      /\.js(x)?$/.test(name)
   );
   return targetAssets;
 }
