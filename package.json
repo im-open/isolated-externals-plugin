@@ -8,7 +8,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "npm run lint && npm run build",
+    "test": "npm run lint && npm run build && jest",
     "build": "tsc && cd src/util && tsc",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx ./src",
     "prepublishOnly": "npm run build"
@@ -52,14 +52,18 @@
     "webpack": "^4.0.0"
   },
   "dependencies": {
+    "babel-cli": "^6.26.0",
     "randomstring": "^1.1.5",
     "webpack-sources": "^1.4.3"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.9.5",
+    "@babel/preset-typescript": "^7.9.0",
     "@commitlint/cli": "^8.3.5",
     "@commitlint/config-conventional": "^8.3.4",
     "@semantic-release/changelog": "^5.0.1",
     "@semantic-release/git": "^9.0.0",
+    "@types/jest": "^25.2.1",
     "@types/randomstring": "^1.1.6",
     "@types/webpack": "^4.41.10",
     "@types/webpack-sources": "^0.1.7",
@@ -71,6 +75,7 @@
     "eslint-config-prettier": "^6.10.0",
     "html-webpack-plugin": "^4.0.3",
     "husky": "^4.2.5",
+    "jest": "^25.4.0",
     "lint-staged": "^10.0.8",
     "prettier": "1.19.1",
     "semantic-release": "^17.0.4",

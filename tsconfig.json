@@ -17,5 +17,5 @@
     "target": "es5"
   },
   "include": ["src"],
-  "exclude": ["src/util"]
+  "exclude": ["src/util", "**/**/__tests__", "src/testing-support"]
 }
