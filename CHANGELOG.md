@@ -1,3 +1,18 @@
+# [1.2.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.1.0...v1.2.0) (2020-04-24)
+
+
+### Build
+
+* adding configuration for testing ([39f91bb](https://github.com/WTW-IM/isolated-externals-plugin/commit/39f91bb126e3d05ee90aad06ee8e27032afb79f2))
+
+### Fix
+
+* ensuring we only wrap JS files ([0ac1aeb](https://github.com/WTW-IM/isolated-externals-plugin/commit/0ac1aeb7178b83b1c505fd31e870496c6071ae3e))
+
+### Update
+
+* adding an optional testing parameter for loadExternals location ([ebce0dc](https://github.com/WTW-IM/isolated-externals-plugin/commit/ebce0dc0b2794abc96f2c575885cba9b3dc1435c))
+
 # [1.1.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.0.0...v1.1.0) (2020-04-22)
 
 
