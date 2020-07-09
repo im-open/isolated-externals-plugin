@@ -1,3 +1,11 @@
+# [1.3.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.2.0...v1.3.0) (2020-07-09)
+
+
+### Update
+
+* holding loaded content in memory ([be19cae](https://github.com/WTW-IM/isolated-externals-plugin/commit/be19cae7e96eeeee0d6131346cfc83a19d920025))
+* using an in-window cache for subsequent externals loading ([ebf41b3](https://github.com/WTW-IM/isolated-externals-plugin/commit/ebf41b3f4a19205e747fd5487955b8188a3e9a8b))
+
 # [1.2.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.1.0...v1.2.0) (2020-04-24)
 
 
