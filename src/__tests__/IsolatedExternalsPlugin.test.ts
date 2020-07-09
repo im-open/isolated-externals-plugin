@@ -55,15 +55,6 @@ it('adds the loadExternals function', done => {
   });
 });
 
-it('never creates an appName that begins with a number', () => {
-  let iteration = 0;
-  while (iteration < 100) {
-    iteration = iteration + 1;
-    const plugin = new IsolatedExternalsPlugin();
-    expect(/[0-9]/.test(plugin.appName[0])).toBeFalsy();
-  }
-});
-
 it('does not wrap anything other than javascript assets', done => {
   webpack(webpackOptions, (err, result) => {
     const resultText = getResultText(result, 'component.js.map');

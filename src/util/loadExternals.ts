@@ -17,13 +17,13 @@ interface Externals {
 class CachedExternal {
   url: string;
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  context: any;
   loading: boolean;
+  content: string;
 
-  constructor(url: string, context = {}) {
+  constructor(url: string) {
     this.url = url;
     this.loading = true;
-    this.context = context;
+    this.content = '';
   }
 }
 
@@ -51,8 +51,8 @@ function networkLoad(
 ): void {
   const request = new XMLHttpRequest();
   const loadedFunction = function(this: XMLHttpRequest): void {
+    external.content = this.responseText;
     external.loading = false;
-    wrappedEval.call(external.context, this.responseText);
     onLoaded(external);
     request.removeEventListener('load', loadedFunction);
   };
@@ -76,7 +76,6 @@ function awaitExternal(
 }
 
 function loadExternal(
-  context = {},
   external: ExternalInfo,
   onLoaded: (loadedExternal: CachedExternal) => void
 ): void {
@@ -85,7 +84,7 @@ function loadExternal(
     awaitExternal(cachedExternal, onLoaded);
     return;
   }
-  const newExternal = new CachedExternal(external.url, context);
+  const newExternal = new CachedExternal(external.url);
   window.__isolatedExternalsCache[external.url] = newExternal;
   networkLoad(newExternal, onLoaded);
 }
@@ -96,14 +95,14 @@ function loadExternals(
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   onComplete: (context: any) => void
 ): void {
-  let context = {};
+  const context = {};
   const externalKeys = Object.keys(externalsObj);
 
   const load = (index: number): void => {
     const key = externalKeys[index];
     const targetExternal = externalsObj[key];
-    loadExternal(context, targetExternal, (loadedExternal: CachedExternal) => {
-      context = { ...context, ...loadedExternal.context };
+    loadExternal(targetExternal, (loadedExternal: CachedExternal) => {
+      wrappedEval.call(context, loadedExternal.content);
 
       const nextIndex = index + 1;
       if (nextIndex === externalKeys.length) {

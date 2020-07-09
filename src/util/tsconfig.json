@@ -4,7 +4,8 @@
     "module": "none",
     "isolatedModules": false,
     "outDir": "../../dist/util",
-    "resolveJsonModule": false
+    "resolveJsonModule": false,
+    "suppressImplicitAnyIndexErrors": true
   },
   "include": ["./*.ts"],
   "exclude": []

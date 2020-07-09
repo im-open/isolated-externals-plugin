@@ -12,6 +12,14 @@ const externals = {
     ['react-dom']: {
       url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
       name: 'ReactDOM'
+    },
+    ['react-is']: {
+      url: 'https://unpkg.com/react-is@16/umd/react-is.development.js',
+      name: 'ReactIs'
+    },
+    ['styled-components']: {
+      url: 'https://unpkg.com/styled-components@5/dist/styled-components.js',
+      name: 'styled'
     }
   },
   secondary: {
@@ -22,6 +30,10 @@ const externals = {
     ['react-dom']: {
       url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
       name: 'ReactDOM'
+    },
+    ['styled-components']: {
+      url: 'https://unpkg.com/styled-components@4/dist/styled-components.js',
+      name: 'styled'
     }
   }
 };
