@@ -148,33 +148,53 @@ function getExternals(
   return externals;
 }
 
+interface NamedEntry {
+  entrypoint: Entrypoint;
+  name: string;
+}
+
 function getTargetAssets(
   comp: Compilation,
   config: IsolatedExternalsConfig,
   externals: IsolatedExternals
-): [string, Source | string][] {
-  const entrypoints = Object.keys(externals)
+): [string, string, Source | string][] {
+  const externalKeys = Object.keys(externals);
+  const entrypoints = externalKeys
     .filter(key => comp.entrypoints.has(key))
-    .map<Entrypoint>(key => comp.entrypoints.get(key) as Entrypoint);
+    .map<NamedEntry>(key => ({
+      name: key,
+      entrypoint: comp.entrypoints.get(key) as Entrypoint
+    }));
   const assets = Object.entries<Source | string>(comp.assets);
-  const targetAssets = assets.filter(
-    ([name]) =>
-      entrypoints.some(point => point.runtimeChunk.files.includes(name)) &&
-      /\.js(x)?$/.test(name)
-  );
+  const targetAssets = assets
+    .filter(
+      ([name]) =>
+        entrypoints.some(entry =>
+          entry.entrypoint.runtimeChunk.files.includes(name)
+        ) && /\.js(x)?$/.test(name)
+    )
+    .map<[string, string, Source | string]>(([name, source]) => {
+      const targetEntry = entrypoints.find(entry =>
+        entry.entrypoint.runtimeChunk.files.includes(name)
+      ) || { name: '' };
+      return [targetEntry.name, name, source];
+    });
   return targetAssets;
 }
 
+function getAppName(): string {
+  return (
+    randomstring.generate({ length: 1, charset: 'alphabetic' }) +
+    randomstring.generate(11)
+  );
+}
+
 export default class IsolatedExternalsPlugin {
-  appName: string;
   loadExternalsLocation: string;
   constructor(
     readonly config: IsolatedExternalsConfig = {},
     loadExternalsLocation?: string
   ) {
-    this.appName =
-      randomstring.generate({ length: 1, charset: 'alphabetic' }) +
-      randomstring.generate(11);
     this.loadExternalsLocation =
       loadExternalsLocation ||
       path.resolve(__dirname, 'util', 'loadExternals.js');
@@ -191,10 +211,14 @@ export default class IsolatedExternalsPlugin {
         const targetAssets = getTargetAssets(comp, this.config, externals);
 
         const externalObjects = Object.entries(externals);
-        for (const [, externalsObject] of externalObjects) {
-          for (const [name, asset] of targetAssets) {
+        for (const [entryName, name, asset] of targetAssets) {
+          const targetObjects = externalObjects.filter(
+            ([externalName]) => externalName === entryName
+          );
+          for (const [, externalsObject] of targetObjects) {
             const source = asset as Source;
-            const wrappedAsset = wrapApp(source, externalsObject, this.appName);
+            const appName = getAppName();
+            const wrappedAsset = wrapApp(source, externalsObject, appName);
             const loadableAsset = await addLoadExternals(
               wrappedAsset,
               this.loadExternalsLocation
@@ -202,7 +226,7 @@ export default class IsolatedExternalsPlugin {
             const calledAsset = callLoadExternals(
               loadableAsset,
               externalsObject,
-              this.appName
+              appName
             );
             const selfInvokingAssset = selfInvoke(calledAsset);
             // @ts-ignore Error:(130, 27) TS2339: Property 'updateAsset' does not exist on type 'Compilation'.
