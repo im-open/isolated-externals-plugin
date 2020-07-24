@@ -1,3 +1,16 @@
+# [1.4.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.3.0...v1.4.0) (2020-07-24)
+
+
+### Build
+
+* removing babel-cli as a dependency ([881500c](https://github.com/WTW-IM/isolated-externals-plugin/commit/881500cd0c56672415613a1211ab7aa02b1da63b))
+* removing peer-dependency on html-webpack-plugin ([f0223a1](https://github.com/WTW-IM/isolated-externals-plugin/commit/f0223a18f0b1b8df3ab53a6335eb82bdbd958f40))
+
+### Update
+
+* change status code range considered as failure ([1325e02](https://github.com/WTW-IM/isolated-externals-plugin/commit/1325e028fd55d3ff5121fbd88d1ce933b2837fc1))
+* continue loading externals after a failure ([35d67b3](https://github.com/WTW-IM/isolated-externals-plugin/commit/35d67b3278bc9701c01fa1c11a354cb010a74b5a))
+
 # [1.3.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.2.0...v1.3.0) (2020-07-09)
 
 
