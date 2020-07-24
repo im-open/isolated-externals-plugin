@@ -18,11 +18,13 @@ class CachedExternal {
   url: string;
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   loading: boolean;
+  failed: boolean;
   content: string;
 
   constructor(url: string) {
     this.url = url;
     this.loading = true;
+    this.failed = false;
     this.content = '';
   }
 }
@@ -52,6 +54,7 @@ function networkLoad(
   const request = new XMLHttpRequest();
   const loadedFunction = function(this: XMLHttpRequest): void {
     external.content = this.responseText;
+    external.failed = this.status >= 400;
     external.loading = false;
     onLoaded(external);
     request.removeEventListener('load', loadedFunction);
@@ -102,7 +105,11 @@ function loadExternals(
     const key = externalKeys[index];
     const targetExternal = externalsObj[key];
     loadExternal(targetExternal, (loadedExternal: CachedExternal) => {
-      wrappedEval.call(context, loadedExternal.content);
+      if (loadedExternal.failed) {
+        console.error(`failed to load external from '${loadedExternal.url}'`);
+      } else {
+        wrappedEval.call(context, loadedExternal.content);
+      }
 
       const nextIndex = index + 1;
       if (nextIndex === externalKeys.length) {
