@@ -54,7 +54,7 @@ function networkLoad(
   const request = new XMLHttpRequest();
   const loadedFunction = function(this: XMLHttpRequest): void {
     external.content = this.responseText;
-    external.failed = this.status >= 299;
+    external.failed = this.status >= 400;
     external.loading = false;
     onLoaded(external);
     request.removeEventListener('load', loadedFunction);
