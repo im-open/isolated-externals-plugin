@@ -2,7 +2,7 @@ import {
   Compiler,
   compilation,
   ExternalsElement,
-  ExternalsObjectElement
+  ExternalsObjectElement,
 } from 'webpack';
 import fs from 'fs';
 import path from 'path';
@@ -93,16 +93,16 @@ function getConfigExternals(
 ): ExternalsObjectElement {
   const externalsArray = Array.isArray(externals) ? externals : [externals];
   const externalsObjects = externalsArray.filter(
-    element => typeof element === 'object' && !(element instanceof RegExp)
+    (element) => typeof element === 'object' && !(element instanceof RegExp)
   );
-  const finalExternals = externalsObjects.map(external => {
+  const finalExternals = externalsObjects.map((external) => {
     const entries = Object.entries(external);
     return entries
       .filter(([, value]) => typeof value === 'string')
       .reduce<ExternalsObjectElement>(
         (final: ExternalsObjectElement, [key, value]: [string, string]) => ({
           ...final,
-          [key]: value
+          [key]: value,
         }),
         {}
       );
@@ -110,7 +110,7 @@ function getConfigExternals(
   const finalElement = finalExternals.reduce<ExternalsObjectElement>(
     (finalObj: ExternalsObjectElement, obj: ExternalsObjectElement) => ({
       ...finalObj,
-      ...obj
+      ...obj,
     }),
     {}
   );
@@ -123,9 +123,9 @@ function getExternals(
 ): IsolatedExternals {
   const externals = Object.entries(pluginConfig).reduce<IsolatedExternals>(
     (finalExternals: IsolatedExternals, [entryName, pluginExternal]) => {
-      const externalContent = Object.entries(pluginExternal).reduce<
-        IsolatedExternalsElement
-      >(
+      const externalContent = Object.entries(
+        pluginExternal
+      ).reduce<IsolatedExternalsElement>(
         (
           finalItems: IsolatedExternalsElement,
           [externalName, externalConfig]: [string, { url: string }]
@@ -133,14 +133,14 @@ function getExternals(
           ...finalItems,
           [externalName]: {
             name: compilerExternals[externalName] as string,
-            ...externalConfig
-          }
+            ...externalConfig,
+          },
         }),
         {} as IsolatedExternalsElement
       );
       return {
         ...finalExternals,
-        [entryName]: externalContent
+        [entryName]: externalContent,
       };
     },
     {} as IsolatedExternals
@@ -160,21 +160,21 @@ function getTargetAssets(
 ): [string, string, Source | string][] {
   const externalKeys = Object.keys(externals);
   const entrypoints = externalKeys
-    .filter(key => comp.entrypoints.has(key))
-    .map<NamedEntry>(key => ({
+    .filter((key) => comp.entrypoints.has(key))
+    .map<NamedEntry>((key) => ({
       name: key,
-      entrypoint: comp.entrypoints.get(key) as Entrypoint
+      entrypoint: comp.entrypoints.get(key) as Entrypoint,
     }));
   const assets = Object.entries<Source | string>(comp.assets);
   const targetAssets = assets
     .filter(
       ([name]) =>
-        entrypoints.some(entry =>
+        entrypoints.some((entry) =>
           entry.entrypoint.runtimeChunk.files.includes(name)
         ) && /\.js(x)?$/.test(name)
     )
     .map<[string, string, Source | string]>(([name, source]) => {
-      const targetEntry = entrypoints.find(entry =>
+      const targetEntry = entrypoints.find((entry) =>
         entry.entrypoint.runtimeChunk.files.includes(name)
       ) || { name: '' };
       return [targetEntry.name, name, source];
@@ -229,7 +229,6 @@ export default class IsolatedExternalsPlugin {
               appName
             );
             const selfInvokingAssset = selfInvoke(calledAsset);
-            // @ts-ignore Error:(130, 27) TS2339: Property 'updateAsset' does not exist on type 'Compilation'.
             comp.updateAsset(name, selfInvokingAssset);
           }
         }
