@@ -1,5 +1,6 @@
 import path from 'path';
 import webpack from 'webpack';
+import { Source } from 'webpack-sources';
 import IsolatedExternalsPlugin from '../IsolatedExternalsPlugin';
 
 const loadExternalsLocation = path.resolve(
@@ -19,35 +20,37 @@ beforeEach(() => {
     {
       component: {
         react: {
-          url: 'https://unpkg.com/react@16/umd/react.development.js'
+          url: 'https://unpkg.com/react@16/umd/react.development.js',
         },
         ['react-dom']: {
-          url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js'
-        }
-      }
+          url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
+        },
+      },
     },
     loadExternalsLocation
   );
 
   webpackOptions = {
     entry: {
-      component: path.resolve(__dirname, '..', 'testing-support', 'fakeApp.js')
+      component: path.resolve(__dirname, '..', 'testing-support', 'fakeApp.js'),
     },
     externals: {
       ['react-dom']: 'ReactDOM',
-      react: 'React'
+      react: 'React',
     },
     plugins: [thePlugin],
-    devtool: 'source-map'
+    devtool: 'source-map',
   };
 });
 
 function getResultText(result: webpack.Stats, file = 'component.js'): string {
-  const resultingSource = result.compilation.assets[file];
-  return resultingSource.source();
+  const resultingSource = (result.compilation.assets as Record<string, Source>)[
+    file
+  ];
+  return resultingSource.source().toString();
 }
 
-it('adds the loadExternals function', done => {
+it('adds the loadExternals function', (done) => {
   webpack(webpackOptions, (err, result) => {
     const resultText = getResultText(result);
     expect(resultText).toContain('function loadExternals');
@@ -55,7 +58,7 @@ it('adds the loadExternals function', done => {
   });
 });
 
-it('does not wrap anything other than javascript assets', done => {
+it('does not wrap anything other than javascript assets', (done) => {
   webpack(webpackOptions, (err, result) => {
     const resultText = getResultText(result, 'component.js.map');
     expect(resultText).not.toContain('function loadExternals');

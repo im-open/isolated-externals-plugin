@@ -1,6 +1,5 @@
-interface CachedExternals {
-  [key: string]: CachedExternal;
-}
+type CachedExternals = Record<string, CachedExternal>;
+
 interface Window {
   __isolatedExternalsCache: CachedExternals;
 }
@@ -16,7 +15,6 @@ interface Externals {
 
 class CachedExternal {
   url: string;
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   loading: boolean;
   failed: boolean;
   content: string;
@@ -29,14 +27,16 @@ class CachedExternal {
   }
 }
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-function wrappedEval(content: string): any {
-  return eval(content);
+function wrappedEval(content: string): unknown {
+  // in case of a self-invoking wrapper, make sure self is defined
+  // as our context object.
+  return eval(`var self=this;\n${content}`);
 }
 
 function getWindowCache(): CachedExternals {
-  window.__isolatedExternalsCache = window.__isolatedExternalsCache || {};
-  return window.__isolatedExternalsCache;
+  const wind = window as Window;
+  wind.__isolatedExternalsCache = wind.__isolatedExternalsCache || {};
+  return wind.__isolatedExternalsCache;
 }
 
 function loadFromCache(external: ExternalInfo): CachedExternal | null {
@@ -52,7 +52,7 @@ function networkLoad(
   onLoaded: (loadedExternal: CachedExternal) => void
 ): void {
   const request = new XMLHttpRequest();
-  const loadedFunction = function(this: XMLHttpRequest): void {
+  const loadedFunction = function (this: XMLHttpRequest): void {
     external.content = this.responseText;
     external.failed = this.status >= 400;
     external.loading = false;
@@ -95,8 +95,7 @@ function loadExternal(
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 function loadExternals(
   externalsObj: Externals,
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  onComplete: (context: any) => void
+  onComplete: (context: Record<string, unknown>) => void
 ): void {
   const context = {};
   const externalKeys = Object.keys(externalsObj);
@@ -104,11 +103,11 @@ function loadExternals(
   const load = (index: number): void => {
     const key = externalKeys[index];
     const targetExternal = externalsObj[key];
-    loadExternal(targetExternal, (loadedExternal: CachedExternal) => {
-      if (loadedExternal.failed) {
-        console.error(`failed to load external from '${loadedExternal.url}'`);
+    loadExternal(targetExternal, ({ failed, url, content }: CachedExternal) => {
+      if (failed) {
+        console.error(`failed to load external from '${url}'`);
       } else {
-        wrappedEval.call(context, loadedExternal.content);
+        wrappedEval.call(context, content);
       }
 
       const nextIndex = index + 1;
