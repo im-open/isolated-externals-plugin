@@ -1,3 +1,18 @@
+# [1.5.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.4.0...v1.5.0) (2021-02-08)
+
+
+### Build
+
+* ensuring we have our peer dependency set to the lowest reasonable version ([a202c18](https://github.com/WTW-IM/isolated-externals-plugin/commit/a202c1865cf6cd27dd9c4456776661d809aa6103))
+
+### Update
+
+* setting self as a local var for anonymous externals ([7b6af85](https://github.com/WTW-IM/isolated-externals-plugin/commit/7b6af85e437566d4e027bc1f799bac5703794604))
+
+### Upgrade
+
+* upgrading most dependencies ([a53de0e](https://github.com/WTW-IM/isolated-externals-plugin/commit/a53de0e75414928960701c44f6cef73b59f51068))
+
 # [1.4.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.3.0...v1.4.0) (2020-07-24)
 
 
