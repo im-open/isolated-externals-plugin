@@ -107,7 +107,12 @@ function loadExternals(
       if (failed) {
         console.error(`failed to load external from '${url}'`);
       } else {
-        wrappedEval.call(context, content);
+        try {
+          wrappedEval.call(context, content);
+        }
+        catch (e) {
+          console.error(`failed to eval external from ${url}`, e);
+        }
       }
 
       const nextIndex = index + 1;
