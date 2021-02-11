@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.5.0...v1.6.0) (2021-02-11)
+
+
+### Update
+
+* continue loading externals after eval failure ([ad56c08](https://github.com/WTW-IM/isolated-externals-plugin/commit/ad56c089e7b76425b07cb2c1c2a0c53e7e4d37d0))
+
 # [1.5.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.4.0...v1.5.0) (2021-02-08)
 
 
