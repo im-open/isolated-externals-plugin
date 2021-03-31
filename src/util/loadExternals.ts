@@ -47,7 +47,7 @@ function loadFromCache(external: ExternalInfo): CachedExternal | null {
   return cachedExternal;
 }
 
-function networkLoad(
+function XHRLoad(
   external: CachedExternal,
   onLoaded: (loadedExternal: CachedExternal) => void
 ): void {
@@ -62,6 +62,34 @@ function networkLoad(
   request.addEventListener('load', loadedFunction);
   request.open('GET', external.url);
   request.send();
+}
+
+async function fetchLoad(external: CachedExternal): Promise<CachedExternal> {
+  const response = await fetch(external.url, {
+    headers: {
+      'Content-Type': 'text/javascript',
+    },
+
+    // "follow" is technically the default,
+    // but making epxlicit for backwards compatibility
+    redirect: 'follow',
+  });
+  external.failed = !response.ok || response.status >= 400;
+  external.loading = false;
+  external.content = await response.text();
+  return external;
+}
+
+async function networkLoad(
+  external: CachedExternal,
+  onLoaded: (loadedExternal: CachedExternal) => void
+): Promise<void> {
+  if ({}.hasOwnProperty.call(window, 'fetch')) {
+    const loadedExternal = await fetchLoad(external);
+    onLoaded(loadedExternal);
+  } else {
+    XHRLoad(external, onLoaded);
+  }
 }
 
 function awaitExternal(
@@ -89,14 +117,43 @@ function loadExternal(
   }
   const newExternal = new CachedExternal(external.url);
   window.__isolatedExternalsCache[external.url] = newExternal;
-  networkLoad(newExternal, onLoaded);
+  void networkLoad(newExternal, onLoaded);
 }
+
+const isReady = () =>
+  document.readyState === 'interactive' || document.readyState === 'complete';
+
+type ListenerParams = Parameters<Window['addEventListener']>;
+type ReplaceEventListener = {
+  (
+    ev: ListenerParams[0],
+    listener: ListenerParams[1],
+    options?: ListenerParams[2]
+  ): void;
+};
+
+const inMemoryListeners: Record<ListenerParams[0], ListenerParams[1]> = {};
+const replaceEventListener: ReplaceEventListener = (ev, listener, options) => {
+  window.removeEventListener(ev, inMemoryListeners[ev] || listener, options);
+  inMemoryListeners[ev] = listener;
+  window.addEventListener(ev, listener, options);
+};
 
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 function loadExternals(
+  this: unknown,
   externalsObj: Externals,
   onComplete: (context: Record<string, unknown>) => void
 ): void {
+  if (!isReady()) {
+    replaceEventListener(
+      'readystatechange',
+      /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+      loadExternals.bind(this, externalsObj, onComplete)
+    );
+    return;
+  }
+
   const context = {};
   const externalKeys = Object.keys(externalsObj);
 
@@ -109,8 +166,7 @@ function loadExternals(
       } else {
         try {
           wrappedEval.call(context, content);
-        }
-        catch (e) {
+        } catch (e) {
           console.error(`failed to eval external from ${url}`, e);
         }
       }
