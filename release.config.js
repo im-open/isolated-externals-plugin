@@ -4,14 +4,20 @@ module.exports = {
     '@semantic-release/commit-analyzer',
     '@semantic-release/release-notes-generator',
     '@semantic-release/changelog',
-    '@semantic-release/github',
+    '@semantic-release/npm',
+    [
+      '@semantic-release/github',
+      {
+        assets: ['*.tgz'],
+      },
+    ],
     [
       '@semantic-release/git',
       {
-        message: 'Docs: ${nextRelease.version} [skip ci]\n\n${nextRelease.note}'
-      }
+        message:
+          'Docs: ${nextRelease.version} [skip ci]\n\n${nextRelease.note}',
+      },
     ],
-    '@semantic-release/npm'
   ],
-  preset: 'eslint'
+  preset: 'eslint',
 };
