@@ -47,7 +47,7 @@ function loadFromCache(external: ExternalInfo): CachedExternal | null {
   return cachedExternal;
 }
 
-function networkLoad(
+function XHRLoad(
   external: CachedExternal,
   onLoaded: (loadedExternal: CachedExternal) => void
 ): void {
@@ -62,6 +62,34 @@ function networkLoad(
   request.addEventListener('load', loadedFunction);
   request.open('GET', external.url);
   request.send();
+}
+
+async function fetchLoad(external: CachedExternal): Promise<CachedExternal> {
+  const response = await fetch(external.url, {
+    headers: {
+      'Content-Type': 'text/javascript',
+    },
+
+    // "follow" is technically the default,
+    // but making epxlicit for backwards compatibility
+    redirect: 'follow',
+  });
+  external.failed = !response.ok || response.status >= 400;
+  external.loading = false;
+  external.content = await response.text();
+  return external;
+}
+
+async function networkLoad(
+  external: CachedExternal,
+  onLoaded: (loadedExternal: CachedExternal) => void
+): Promise<void> {
+  if ({}.hasOwnProperty.call(window, 'fetch')) {
+    const loadedExternal = await fetchLoad(external);
+    onLoaded(loadedExternal);
+  } else {
+    XHRLoad(external, onLoaded);
+  }
 }
 
 function awaitExternal(
@@ -89,7 +117,7 @@ function loadExternal(
   }
   const newExternal = new CachedExternal(external.url);
   window.__isolatedExternalsCache[external.url] = newExternal;
-  networkLoad(newExternal, onLoaded);
+  void networkLoad(newExternal, onLoaded);
 }
 
 const isReady = () =>
