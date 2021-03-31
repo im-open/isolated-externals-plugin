@@ -92,11 +92,40 @@ function loadExternal(
   networkLoad(newExternal, onLoaded);
 }
 
+const isReady = () =>
+  document.readyState === 'interactive' || document.readyState === 'complete';
+
+type ListenerParams = Parameters<Window['addEventListener']>;
+type ReplaceEventListener = {
+  (
+    ev: ListenerParams[0],
+    listener: ListenerParams[1],
+    options?: ListenerParams[2]
+  ): void;
+};
+
+const inMemoryListeners: Record<ListenerParams[0], ListenerParams[1]> = {};
+const replaceEventListener: ReplaceEventListener = (ev, listener, options) => {
+  window.removeEventListener(ev, inMemoryListeners[ev] || listener, options);
+  inMemoryListeners[ev] = listener;
+  window.addEventListener(ev, listener, options);
+};
+
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 function loadExternals(
+  this: unknown,
   externalsObj: Externals,
   onComplete: (context: Record<string, unknown>) => void
 ): void {
+  if (!isReady()) {
+    replaceEventListener(
+      'readystatechange',
+      /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+      loadExternals.bind(this, externalsObj, onComplete)
+    );
+    return;
+  }
+
   const context = {};
   const externalKeys = Object.keys(externalsObj);
 
@@ -109,8 +138,7 @@ function loadExternals(
       } else {
         try {
           wrappedEval.call(context, content);
-        }
-        catch (e) {
+        } catch (e) {
           console.error(`failed to eval external from ${url}`, e);
         }
       }
