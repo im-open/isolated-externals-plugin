@@ -1,3 +1,15 @@
+# [1.7.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.6.0...v1.7.0) (2021-03-31)
+
+
+### Build
+
+* updating github/git after npm release ([113fc5f](https://github.com/WTW-IM/isolated-externals-plugin/commit/113fc5f2e9d798334564cf264df2a9b90e796d03))
+
+### Update
+
+* ensuring we only start loading externals when the document is ready ([7c1eb3a](https://github.com/WTW-IM/isolated-externals-plugin/commit/7c1eb3a5395e8f75af395099be5209c49945d589))
+* using fetch when we can ([f2f33e1](https://github.com/WTW-IM/isolated-externals-plugin/commit/f2f33e15a28f569503487d86297cd2abb081b7d7))
+
 # [1.6.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.5.0...v1.6.0) (2021-02-11)
 
 
