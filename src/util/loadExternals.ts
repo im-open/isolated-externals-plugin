@@ -66,10 +66,6 @@ function XHRLoad(
 
 async function fetchLoad(external: CachedExternal): Promise<CachedExternal> {
   const response = await fetch(external.url, {
-    headers: {
-      'Content-Type': 'text/javascript',
-    },
-
     // "follow" is technically the default,
     // but making epxlicit for backwards compatibility
     redirect: 'follow',
@@ -85,8 +81,12 @@ async function networkLoad(
   onLoaded: (loadedExternal: CachedExternal) => void
 ): Promise<void> {
   if ({}.hasOwnProperty.call(window, 'fetch')) {
-    const loadedExternal = await fetchLoad(external);
-    onLoaded(loadedExternal);
+    try {
+      const loadedExternal = await fetchLoad(external);
+      onLoaded(loadedExternal);
+    } catch {
+      XHRLoad(external, onLoaded);
+    }
   } else {
     XHRLoad(external, onLoaded);
   }
