@@ -23,4 +23,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PIPELINE_BOT_GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GIT_AUTHOR_NAME: im-pipeline-bot
+          GIT_AUTHOR_EMAIL: ${{ secrets.COMMITBOT_EMAIL }}
+          GIT_COMMITTER_NAME: im-pipeline-bot
+          GIT_COMMITTER_EMAIL: ${{ secrets.COMMITBOT_EMAIL }}
         run: npx --no-install semantic-release
