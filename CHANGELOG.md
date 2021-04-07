@@ -1,3 +1,16 @@
+## [1.7.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.7.0...v1.7.1) (2021-04-07)
+
+
+### Build
+
+* create Github Actions CI build ([8f65202](https://github.com/WTW-IM/isolated-externals-plugin/commit/8f65202c132436ebeffdec78efb3ac8b1269757c))
+* not persisting credentials with checkout step ([e4a2790](https://github.com/WTW-IM/isolated-externals-plugin/commit/e4a2790966c858b3218f6c00015deca50ca36926))
+* setting up semantic-release with Github Actions ([d9d5fe7](https://github.com/WTW-IM/isolated-externals-plugin/commit/d9d5fe7a5c351f0e436f84c27154f190c1b77c66))
+
+### Fix
+
+* falling back to xhr when fetch fails ([ce97fef](https://github.com/WTW-IM/isolated-externals-plugin/commit/ce97fef6623b4ebc05f1434dc738a44de165ab39))
+
 # [1.7.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.6.0...v1.7.0) (2021-03-31)
 
 
