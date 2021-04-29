@@ -20,10 +20,14 @@ beforeEach(() => {
     {
       component: {
         react: {
-          url: 'https://unpkg.com/react@16/umd/react.development.js',
+          url: 'https://unpkg.com/react@17/umd/react.development.js',
         },
         ['react-dom']: {
-          url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
+          url: 'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
+        },
+        ['@microsoft/applicationinsights-web']: {
+          url:
+            'https://www.unpkg.com/browse/@microsoft/applicationinsights-web@2.6.2/dist/applicationinsights-web.min.js',
         },
       },
     },
@@ -37,6 +41,7 @@ beforeEach(() => {
     externals: {
       ['react-dom']: 'ReactDOM',
       react: 'React',
+      ['@microsoft/applicationinsights-web']: 'Microsoft.ApplicationInsights',
     },
     plugins: [thePlugin],
     devtool: 'source-map',
@@ -62,6 +67,16 @@ it('does not wrap anything other than javascript assets', (done) => {
   webpack(webpackOptions, (err, result) => {
     const resultText = getResultText(result, 'component.js.map');
     expect(resultText).not.toContain('function loadExternals');
+    done();
+  });
+});
+
+it('defines the base object for nested vars', (done) => {
+  webpack(webpackOptions, (err, result) => {
+    const resultText = getResultText(result);
+    expect(resultText).toContain(
+      'var Microsoft = context.Microsoft || (window || global || self)["Microsoft"];'
+    );
     done();
   });
 });

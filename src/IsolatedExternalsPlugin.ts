@@ -40,6 +40,9 @@ type IsolatedExternalsConfig = {
   };
 };
 
+const generateVar = (external: string) =>
+  `var ${external} = context.${external} || (window || global || self)["${external}"];`;
+
 function wrapApp(
   source: Source | string,
   externals: IsolatedExternalsElement,
@@ -47,11 +50,14 @@ function wrapApp(
 ): ConcatSource {
   const externalsList = Object.entries(externals);
   const varNames = externalsList
-    .map(
-      ([, external]) =>
-        `var ${external.name} = context.${external.name} || ( window || global || self )["${external.name}"];`
+    .map(([, { name }]) =>
+      generateVar(
+        // for the case of nested dependencies, we only need to define the base
+        // object from our context
+        name.split('.')[0]
+      )
     )
-    .join(' ');
+    .join('\n  ');
   const wrappedSource = new ConcatSource(
     `function ${appName}(context){`,
     `\n`,

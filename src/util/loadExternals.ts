@@ -30,7 +30,11 @@ class CachedExternal {
 function wrappedEval(content: string): unknown {
   // in case of a self-invoking wrapper, make sure self is defined
   // as our context object.
-  return eval(`var self=this;\n${content}`);
+  return eval(`
+var self=this;
+var globalThis = this;
+${content}
+  `);
 }
 
 function getWindowCache(): CachedExternals {
