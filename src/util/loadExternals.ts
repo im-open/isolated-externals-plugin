@@ -138,9 +138,9 @@ type ReplaceEventListener = {
 
 const inMemoryListeners: Record<ListenerParams[0], ListenerParams[1]> = {};
 const replaceEventListener: ReplaceEventListener = (ev, listener, options) => {
-  window.removeEventListener(ev, inMemoryListeners[ev] || listener, options);
+  document.removeEventListener(ev, inMemoryListeners[ev] || listener, options);
   inMemoryListeners[ev] = listener;
-  window.addEventListener(ev, listener, options);
+  document.addEventListener(ev, listener, options);
 };
 
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
