@@ -27,9 +27,9 @@ export interface IsolatedExternals {
 }
 
 interface Entrypoint {
-  runtimeChunk: {
+  chunks: {
     files: string[];
-  };
+  }[];
 }
 
 const readFile = promisify(fs.readFile);
@@ -176,12 +176,12 @@ function getTargetAssets(
     .filter(
       ([name]) =>
         entrypoints.some((entry) =>
-          entry.entrypoint.runtimeChunk.files.includes(name)
+          entry.entrypoint.chunks.some((chunk) => chunk.files.includes(name))
         ) && /\.js(x)?$/.test(name)
     )
     .map<[string, string, Source | string]>(([name, source]) => {
       const targetEntry = entrypoints.find((entry) =>
-        entry.entrypoint.runtimeChunk.files.includes(name)
+        entry.entrypoint.chunks.some((chunk) => chunk.files.includes(name))
       ) || { name: '' };
       return [targetEntry.name, name, source];
     });

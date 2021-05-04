@@ -7,48 +7,48 @@ const externals = {
   initial: {
     react: {
       url: 'https://unpkg.com/react@16/umd/react.development.js',
-      name: 'React'
+      name: 'React',
     },
     ['react-dom']: {
       url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
-      name: 'ReactDOM'
+      name: 'ReactDOM',
     },
     ['react-is']: {
       url: 'https://unpkg.com/react-is@16/umd/react-is.development.js',
-      name: 'ReactIs'
+      name: 'ReactIs',
     },
     ['styled-components']: {
       url: 'https://unpkg.com/styled-components@5/dist/styled-components.js',
-      name: 'styled'
-    }
+      name: 'styled',
+    },
   },
   secondary: {
     react: {
       url: 'https://unpkg.com/react@16/umd/react.development.js',
-      name: 'React'
+      name: 'React',
     },
     ['react-dom']: {
       url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
-      name: 'ReactDOM'
+      name: 'ReactDOM',
     },
     ['styled-components']: {
       url: 'https://unpkg.com/styled-components@4/dist/styled-components.js',
-      name: 'styled'
-    }
-  }
+      name: 'styled',
+    },
+  },
 };
 
 const allExternals = Object.keys(externals).reduce(
   (final, key) => ({
     ...final,
-    ...externals[key]
+    ...externals[key],
   }),
   {}
 );
 const webpackExternals = Object.keys(allExternals).reduce(
   (final, key) => ({
     ...final,
-    [key]: allExternals[key].name
+    [key]: allExternals[key].name,
   }),
   {}
 );
@@ -56,12 +56,12 @@ const webpackExternals = Object.keys(allExternals).reduce(
 module.exports = {
   entry: {
     initial: path.join(__dirname, '/js/initial.js'),
-    secondary: path.join(__dirname, '/js/secondary.js')
+    secondary: path.join(__dirname, '/js/secondary.js'),
   },
   devtool: 'sourcemap',
   externals: webpackExternals,
   output: {
-    filename: 'dist/[name]-[contenthash].js'
+    filename: 'dist/[name]-[contenthash].js',
   },
   module: {
     rules: [
@@ -70,21 +70,28 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-react']
-          }
-        }
-      }
-    ]
+            presets: ['@babel/preset-react'],
+          },
+        },
+      },
+    ],
+  },
+  optimization: {
+    runtimeChunk: false,
+    splitChunks: {
+      chunks: (chunk) => chunk.name.includes('initial'),
+      name: false,
+    },
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: path.join(__dirname, './html/index.html')
+      template: path.join(__dirname, './html/index.html'),
     }),
-    new IsolatedExternalsPlugin(externals)
+    new IsolatedExternalsPlugin(externals),
   ],
   devServer: {
     contentBase: path.join(__dirname, 'dist'),
     compress: true,
-    port: 9000
-  }
+    port: 9000,
+  },
 };
