@@ -27,10 +27,50 @@ class CachedExternal {
   }
 }
 
+/* assign polyfill */
+if (typeof Object.assign !== 'function') {
+  // Must be writable: true, enumerable: false, configurable: true
+  Object.defineProperty(Object, 'assign', {
+    value: function assign(
+      target: Record<string, unknown>,
+      ...varArgs: Record<string, unknown>[]
+    ) {
+      // .length of function is 2
+      'use strict';
+      if (target === null || target === undefined) {
+        throw new TypeError('Cannot convert undefined or null to object');
+      }
+
+      const to = Object(target) as Record<string, unknown>;
+
+      for (let index = 0; index < arguments.length; index++) {
+        const nextSource = varArgs[index];
+
+        if (nextSource !== null && nextSource !== undefined) {
+          for (const nextKey in nextSource) {
+            // Avoid bugs when hasOwnProperty is shadowed
+            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+              to[nextKey] = nextSource[nextKey];
+            }
+          }
+        }
+      }
+      return to;
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+/* end assign polyfill */
+
 function wrappedEval(content: string): unknown {
   // in case of a self-invoking wrapper, make sure self is defined
   // as our context object.
-  return eval(`var self=this;\n${content}`);
+  return eval(`
+var self=this;
+var globalThis = this;
+${content}
+  `);
 }
 
 function getWindowCache(): CachedExternals {
@@ -53,9 +93,11 @@ function XHRLoad(
 ): void {
   const request = new XMLHttpRequest();
   const loadedFunction = function (this: XMLHttpRequest): void {
-    external.content = this.responseText;
-    external.failed = this.status >= 400;
-    external.loading = false;
+    Object.assign(external, {
+      content: this.responseText,
+      failed: this.status >= 400,
+      loading: false,
+    });
     onLoaded(external);
     request.removeEventListener('load', loadedFunction);
   };
@@ -70,9 +112,12 @@ async function fetchLoad(external: CachedExternal): Promise<CachedExternal> {
     // but making epxlicit for backwards compatibility
     redirect: 'follow',
   });
-  external.failed = !response.ok || response.status >= 400;
-  external.loading = false;
-  external.content = await response.text();
+  const responseText = await response.text();
+  Object.assign(external, {
+    failed: !response.ok || response.status >= 400,
+    loading: false,
+    content: responseText,
+  });
   return external;
 }
 
@@ -134,9 +179,9 @@ type ReplaceEventListener = {
 
 const inMemoryListeners: Record<ListenerParams[0], ListenerParams[1]> = {};
 const replaceEventListener: ReplaceEventListener = (ev, listener, options) => {
-  window.removeEventListener(ev, inMemoryListeners[ev] || listener, options);
+  document.removeEventListener(ev, inMemoryListeners[ev] || listener, options);
   inMemoryListeners[ev] = listener;
-  window.addEventListener(ev, listener, options);
+  document.addEventListener(ev, listener, options);
 };
 
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
