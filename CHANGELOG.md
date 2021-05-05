@@ -1,3 +1,23 @@
+# [1.8.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.7.1...v1.8.0) (2021-05-05)
+
+
+### Build
+
+* updating git author/committer info in Release ([2cdb6aa](https://github.com/WTW-IM/isolated-externals-plugin/commit/2cdb6aa2079c2ef2a9766c8edcbaa539aad36168))
+
+### Fix
+
+* adding the readystatechange listener to the correct object ([63a185c](https://github.com/WTW-IM/isolated-externals-plugin/commit/63a185cd2de8f98433a8e3c72b58adbff705c4f3))
+* using Object.assign and awaiting result text before assign ([17be70b](https://github.com/WTW-IM/isolated-externals-plugin/commit/17be70bef30735ba5212ec4b9f5e3109f61b2808))
+
+### Update
+
+* enabling nested externals ([e0e8da4](https://github.com/WTW-IM/isolated-externals-plugin/commit/e0e8da4d2a35d330d819b699c34fc6ab232e349d))
+
+### Upgrade
+
+* updating packages for audit ([5fef82c](https://github.com/WTW-IM/isolated-externals-plugin/commit/5fef82cbcec361fe6747dd32de231f9e634c2eab))
+
 ## [1.7.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.7.0...v1.7.1) (2021-04-07)
 
 
