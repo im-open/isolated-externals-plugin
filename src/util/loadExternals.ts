@@ -178,12 +178,18 @@ type ReplaceEventListener = {
 };
 
 const inMemoryListeners: Record<ListenerParams[0], ListenerParams[1]> = {};
-const replaceEventListener: ReplaceEventListener = (ev, listener, options) => {
+
+const removeInMemoryListener: ReplaceEventListener = (ev, listener, options) =>
   document.removeEventListener(ev, inMemoryListeners[ev] || listener, options);
+
+const replaceEventListener: ReplaceEventListener = (ev, listener, options) => {
+  removeInMemoryListener(ev, listener, options);
   inMemoryListeners[ev] = listener;
   document.addEventListener(ev, listener, options);
 };
 
+const readyStateEvent = 'readystatechange';
+let readyStateListener: EventListener;
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 function loadExternals(
   this: unknown,
@@ -191,13 +197,12 @@ function loadExternals(
   onComplete: (context: Record<string, unknown>) => void
 ): void {
   if (!isReady()) {
-    replaceEventListener(
-      'readystatechange',
-      /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-      loadExternals.bind(this, externalsObj, onComplete)
-    );
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+    readyStateListener = loadExternals.bind(this, externalsObj, onComplete);
+    replaceEventListener(readyStateEvent, readyStateListener);
     return;
   }
+  removeInMemoryListener(readyStateEvent, readyStateListener);
 
   const context = {};
   const externalKeys = Object.keys(externalsObj);
