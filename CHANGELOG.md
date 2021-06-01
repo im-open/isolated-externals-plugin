@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.8.0...v1.8.1) (2021-06-01)
+
+
+### Fix
+
+* ensuring we remove readystatechange event listener with first run ([41d0f0b](https://github.com/WTW-IM/isolated-externals-plugin/commit/41d0f0b3f9a806afe2a7012a2edee6a538f671db))
+
 # [1.8.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.7.1...v1.8.0) (2021-05-05)
 
 
