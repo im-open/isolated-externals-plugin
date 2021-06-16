@@ -4,9 +4,13 @@
     "module": "none",
     "isolatedModules": false,
     "outDir": "../../dist/util",
+    "outFile": "../../dist/util/loadExternals.js",
     "resolveJsonModule": false,
     "suppressImplicitAnyIndexErrors": true
   },
-  "include": ["./*.ts"],
+  "include": [
+    "../../node_modules/promise-polyfill/dist/polyfill.min.js",
+    "./*.ts"
+  ],
   "exclude": []
 }
