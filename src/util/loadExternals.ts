@@ -37,7 +37,7 @@ class InnerResponse implements GuaranteedResponse {
   __response: ResponseLike;
   constructor(body: string, responseInit?: ResponseInit) {
     this.__response =
-      'Response' in globalThis
+      'Response' in window
         ? new Response(body, responseInit)
         : new StaticResponse(body, responseInit);
   }
@@ -83,7 +83,7 @@ const XHRPromise = (url: string): Promise<ResponseLike> =>
   new Promise((resolve) => XHRLoad(url, resolve));
 
 async function networkLoad(url: string): Promise<ResponseLike> {
-  if ({}.hasOwnProperty.call(window, 'fetch')) {
+  if ('fetch' in window) {
     try {
       const loadedExternal = await fetchLoad(url);
       return loadedExternal;
@@ -121,20 +121,17 @@ class CachedExternal {
   url: string;
   loading: boolean;
   failed: boolean;
-  private cache: CacheLike | undefined;
   private cachePromise: Promise<CacheLike>;
 
   constructor(url: string) {
     this.url = url;
     this.loading = true;
     this.failed = false;
-    if ('caches' in self) {
-      this.cachePromise = self.caches
-        .open(CACHE_NAME)
-        .then((openedCache) => (this.cache = openedCache));
+    if ('caches' in window) {
+      this.cachePromise = window.caches.open(CACHE_NAME);
     } else {
-      this.cache = new StaticCache();
-      this.cachePromise = Promise.resolve(this.cache);
+      const staticCache = new StaticCache();
+      this.cachePromise = Promise.resolve(staticCache);
     }
   }
 
