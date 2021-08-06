@@ -122,11 +122,14 @@ class CachedExternal {
   loading: boolean;
   failed: boolean;
   private cachePromise: Promise<CacheLike>;
+  private retries: number;
+  static MAX_RETRIES = 1;
 
   constructor(url: string) {
     this.url = url;
     this.loading = true;
     this.failed = false;
+    this.retries = 0;
     if ('caches' in window) {
       this.cachePromise = window.caches.open(CACHE_NAME);
     } else {
@@ -147,7 +150,7 @@ class CachedExternal {
     await (await this.getCache()).put(this.url, new Response(content));
   }
 
-  async load() {
+  async load(): Promise<void> {
     this.loading = true;
 
     try {
@@ -156,7 +159,17 @@ class CachedExternal {
       const response = await cache.match(this.url);
       this.failed = !response?.ok || response?.status >= 400;
     } catch {
-      this.failed = true;
+      /*
+       * Chrome occasionally fails with a network error when attempting to cache
+       * a url that returns a redirect Response. This retry should get around
+       * that.
+       */
+      if (this.retries < CachedExternal.MAX_RETRIES) {
+        this.retries += 1;
+        return this.load();
+      } else {
+        this.failed = true;
+      }
     }
 
     this.loading = false;
