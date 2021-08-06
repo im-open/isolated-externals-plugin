@@ -1,3 +1,4 @@
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 type CachedExternals = Record<string, CachedExternal>;
 
 interface ExternalInfo {
@@ -5,6 +6,7 @@ interface ExternalInfo {
   url: string;
 }
 
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 interface Externals {
   [key: string]: ExternalInfo;
 }
@@ -121,6 +123,7 @@ class CachedExternal {
   url: string;
   loading: boolean;
   failed: boolean;
+  error?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   private cachePromise: Promise<CacheLike>;
   private retries: number;
   static MAX_RETRIES = 1;
@@ -158,7 +161,7 @@ class CachedExternal {
       await cache.add(this.url);
       const response = await cache.match(this.url);
       this.failed = !response?.ok || response?.status >= 400;
-    } catch {
+    } catch (err) {
       /*
        * Chrome occasionally fails with a network error when attempting to cache
        * a url that returns a redirect Response. This retry should get around
@@ -169,6 +172,7 @@ class CachedExternal {
         return this.load();
       } else {
         this.failed = true;
+        this.error = err; // eslint-disable-line @typescript-eslint/no-unsafe-assignment
       }
     }
 

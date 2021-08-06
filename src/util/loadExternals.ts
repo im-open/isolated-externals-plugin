@@ -56,9 +56,11 @@ async function loadExternal(external: ExternalInfo): Promise<CachedExternal> {
 async function evalExternals(loadedExternals: CachedExternal[]) {
   const context = {};
   for (const cachedExternal of loadedExternals) {
-    const { failed, url } = cachedExternal;
+    /* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */
+    const { failed, url, error } = cachedExternal;
+
     if (failed) {
-      console.error(`failed to load external from '${url}'`);
+      console.error(`failed to load external from '${url}'`, error);
     } else {
       try {
         const content = await cachedExternal.getContent();
