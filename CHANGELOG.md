@@ -1,3 +1,14 @@
+# [1.10.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.9.0...v1.10.0) (2021-08-06)
+
+### Fix
+
+- adding a retry on cache.add for a Chrome bug ([12b08d8](https://github.com/WTW-IM/isolated-externals-plugin/commit/12b08d80f8097c3a1d16749cf37644c945906620))
+
+### Update
+
+- adding error log when externals fail to load ([5c7ea4c](https://github.com/WTW-IM/isolated-externals-plugin/commit/5c7ea4c650f73764b077c0289c365dd189bf2e99))
+- separating externals classes ([6ebecea](https://github.com/WTW-IM/isolated-externals-plugin/commit/6ebecea78a309f62bb00e5db38beaee208381ead))
+
 # [1.9.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.8.1...v1.9.0) (2021-06-18)
 
 ### Build
