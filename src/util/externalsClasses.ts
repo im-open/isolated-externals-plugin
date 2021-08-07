@@ -11,7 +11,7 @@ interface Externals {
   [key: string]: ExternalInfo;
 }
 
-type GuaranteedResponse = Pick<Response, 'ok' | 'status' | 'text'>;
+type GuaranteedResponse = Pick<Response, 'ok' | 'status' | 'text' | 'clone'>;
 type ResponseLike = Partial<Response> & GuaranteedResponse;
 
 class StaticResponse implements GuaranteedResponse {
@@ -24,6 +24,10 @@ class StaticResponse implements GuaranteedResponse {
 
   text() {
     return Promise.resolve(this.__text || '');
+  }
+
+  clone() {
+    return (this as unknown) as Response;
   }
 
   get status() {
@@ -45,7 +49,11 @@ class InnerResponse implements GuaranteedResponse {
   }
 
   text() {
-    return this.__response.text();
+    return this.clone()?.text();
+  }
+
+  clone() {
+    return this.__response.clone();
   }
 
   get status() {
@@ -103,7 +111,7 @@ class StaticCache implements GuaranteedCache {
   __response: ResponseLike | undefined;
 
   async match() {
-    return Promise.resolve(this.__response as Response);
+    return Promise.resolve(this.__response?.clone());
   }
 
   async put(...[, response]: Parameters<Cache['put']>) {
@@ -124,7 +132,7 @@ class CachedExternal {
   loading: boolean;
   failed: boolean;
   error?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  private cachePromise: Promise<CacheLike>;
+  private cachePromise?: Promise<CacheLike>;
   private retries: number;
   static MAX_RETRIES = 1;
 
@@ -133,16 +141,24 @@ class CachedExternal {
     this.loading = true;
     this.failed = false;
     this.retries = 0;
-    if ('caches' in window) {
-      this.cachePromise = window.caches.open(CACHE_NAME);
-    } else {
-      const staticCache = new StaticCache();
-      this.cachePromise = Promise.resolve(staticCache);
-    }
   }
 
   async getCache() {
-    return await this.cachePromise;
+    if (this.cachePromise) return await this.cachePromise;
+
+    /*
+     * This covers any browsers without the caches API,
+     * and works around this Firefox bug:
+     * https://bugzilla.mozilla.org/show_bug.cgi?id=1724607
+     */
+    try {
+      this.cachePromise = window.caches.open(CACHE_NAME);
+      return await this.cachePromise;
+    } catch {
+      const staticCache = new StaticCache();
+      this.cachePromise = Promise.resolve(staticCache);
+      return await this.cachePromise;
+    }
   }
 
   async getContent() {
