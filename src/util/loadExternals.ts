@@ -1,14 +1,5 @@
 /// reference path="./externalsClasses"
 
-function wrappedEval(content: string): unknown {
-  // in case of a self-invoking wrapper, make sure self is defined
-  // as our context object.
-  return eval(`
-var self=this;
-var globalThis = this;
-${content}`);
-}
-
 async function awaitExternal(
   external: CachedExternal
 ): Promise<CachedExternal> {
@@ -53,20 +44,40 @@ async function loadExternal(external: ExternalInfo): Promise<CachedExternal> {
   return newExternal;
 }
 
-async function evalExternals(loadedExternals: CachedExternal[]) {
+/* eslint-disable @typescript-eslint/no-implied-eval */
+function applyExternal(
+  content: string,
+  context: Record<string, unknown>
+): unknown {
+  // in case of a self-invoking wrapper, make sure self is defined
+  // as our context object.
+  return Function(`
+var self=this;
+var globalThis = this;
+${content}`).call(context);
+}
+/* eslint-enable @typescript-eslint/no-implied-eval */
+
+async function applyExternals(loadedExternals: CachedExternal[]) {
   const context = {};
   for (const cachedExternal of loadedExternals) {
     /* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */
     const { failed, url, error } = cachedExternal;
 
     if (failed) {
-      console.error(`failed to load external from '${url}'`, error);
+      console.error(
+        `EXTERNAL LOAD FAILED: failed to load external from '${url}'`,
+        error
+      );
     } else {
       try {
         const content = await cachedExternal.getContent();
-        wrappedEval.call(context, content || '');
+        applyExternal(content || '', context);
       } catch (e) {
-        console.error(`failed to eval external from ${url}`, e);
+        console.error(
+          `EXTERNAL PROCESS FAILED: failed to process external from ${url}`,
+          e
+        );
       }
     }
   }
@@ -116,6 +127,6 @@ async function loadExternals(
   const loadedExternals = await Promise.all(
     Object.values(externalsObj).map(loadExternal)
   );
-  const context = await evalExternals(loadedExternals);
+  const context = await applyExternals(loadedExternals);
   onComplete(context);
 }
