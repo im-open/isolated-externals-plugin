@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.0...v1.10.1) (2021-08-09)
+
+### Fix
+
+- using Function instead of eval ([8af37e7](https://github.com/WTW-IM/isolated-externals-plugin/commit/8af37e73ea47b0f5c91e72a1f814f57e46c7ad35))
+- using try/catch while opening cache ([0ffb5b0](https://github.com/WTW-IM/isolated-externals-plugin/commit/0ffb5b06e4c778258159ee02005fb2a9a7ad1c31))
+
 # [1.10.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.9.0...v1.10.0) (2021-08-06)
 
 ### Fix
