@@ -1,3 +1,15 @@
+## [1.10.2](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.1...v1.10.2) (2021-12-15)
+
+### Build
+
+- updating release config for new default branch name ([8614408](https://github.com/WTW-IM/isolated-externals-plugin/commit/86144081ecf1e00ee349ba49a70db5607034db20))
+- updating release for new default branch name ([97a179e](https://github.com/WTW-IM/isolated-externals-plugin/commit/97a179e2c6e2417d25040d5ed8396b56887ca5f8))
+- updating to latest semantic-release ([3675121](https://github.com/WTW-IM/isolated-externals-plugin/commit/3675121f6620b2de32aa713b7ba6d841173ed9f3))
+
+### Fix
+
+- not wrapping hot updates ([df42a39](https://github.com/WTW-IM/isolated-externals-plugin/commit/df42a3982c94fd7af43050298b5734eb6d10bd82))
+
 ## [1.10.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.0...v1.10.1) (2021-08-09)
 
 ### Fix
