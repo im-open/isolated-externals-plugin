@@ -177,7 +177,9 @@ function getTargetAssets(
       ([name]) =>
         entrypoints.some((entry) =>
           entry.entrypoint.chunks.some((chunk) => chunk.files.includes(name))
-        ) && /\.js(x)?$/.test(name)
+        ) &&
+        /\.js(x)?$/.test(name) &&
+        !/\.hot-update\./.test(name)
     )
     .map<[string, string, Source | string]>(([name, source]) => {
       const targetEntry = entrypoints.find((entry) =>
