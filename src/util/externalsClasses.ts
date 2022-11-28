@@ -1,15 +1,18 @@
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-type CachedExternals = Record<string, CachedExternal>;
+export type CachedExternals = Record<string, CachedExternal>;
 
-interface ExternalInfo {
+export interface ExternalInfo {
   name: string;
   url: string;
 }
 
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-interface Externals {
+export interface Externals {
   [key: string]: ExternalInfo;
 }
+
+const isReady = (): boolean =>
+  document.readyState === 'interactive' || document.readyState === 'complete';
 
 type GuaranteedResponse = Pick<Response, 'ok' | 'status' | 'text' | 'clone'>;
 type ResponseLike = Partial<Response> & GuaranteedResponse;
@@ -127,23 +130,27 @@ class StaticCache implements GuaranteedCache {
 }
 
 const CACHE_NAME = '__isolatedExternalsCache';
-class CachedExternal {
+export class CachedExternal {
   url: string;
   loading: boolean;
   failed: boolean;
   error?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  loaded: boolean;
   private cachePromise?: Promise<CacheLike>;
   private retries: number;
+  private readyListener?: () => void;
   static MAX_RETRIES = 1;
 
   constructor(url: string) {
     this.url = url;
-    this.loading = true;
     this.failed = false;
     this.retries = 0;
+    this.loaded = false;
+    this.loading = true;
+    void this.load();
   }
 
-  async getCache() {
+  async getCache(): Promise<CacheLike> {
     if (this.cachePromise) return await this.cachePromise;
 
     /*
@@ -161,22 +168,65 @@ class CachedExternal {
     }
   }
 
-  async getContent() {
-    return (await (await this.getCache()).match(this.url))?.text();
+  async getContent(): Promise<string | undefined> {
+    if (this.failed) return '';
+
+    const cacheMatch = await (await this.getCache()).match(this.url);
+    if (cacheMatch) {
+      return cacheMatch.text();
+    }
+
+    if (this.loading) await this.waitForLoad();
+    else await this.load();
+    return this.getContent();
   }
 
-  async setContent(content: string) {
+  async setContent(content: string): Promise<void> {
     await (await this.getCache()).put(this.url, new Response(content));
   }
 
+  waitForLoad(): Promise<void> {
+    return new Promise((res) => {
+      const checkLoad = () => {
+        if (!this.loading) return res();
+        window.requestAnimationFrame(checkLoad);
+      };
+      checkLoad();
+    });
+  }
+
+  waitForReady(): Promise<void> {
+    return new Promise((res) => {
+      const readyListener = () => {
+        if (isReady()) return res();
+
+        const newListener = readyListener.bind(this);
+        const readyEvent = 'readystatechange';
+        document.removeEventListener(
+          readyEvent,
+          this.readyListener || newListener
+        );
+        this.readyListener = newListener;
+        document.addEventListener(readyEvent, newListener);
+      };
+
+      readyListener();
+    });
+  }
+
   async load(): Promise<void> {
+    if (this.loaded) return;
+
     this.loading = true;
+
+    await this.waitForReady();
 
     try {
       const cache = await this.getCache();
       await cache.add(this.url);
       const response = await cache.match(this.url);
       this.failed = !response?.ok || response?.status >= 400;
+      this.loaded = true;
     } catch (err) {
       /*
        * Chrome occasionally fails with a network error when attempting to cache
