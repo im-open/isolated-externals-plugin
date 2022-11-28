@@ -3,6 +3,7 @@ import { processExternal } from './processExternals';
 
 declare global {
   const ISOLATED_EXTERNALS_OBJECT: Externals;
+  const __webpack_modules__: Record<string, unknown>;
   interface Window {
     __isolatedExternalsCacheV2: CachedExternals;
   }
@@ -20,31 +21,35 @@ function getExternal(url: string): CachedExternal {
   );
 }
 
-export function createExternalsObject(
-  externalsName: string,
+function createExternalsObject(
   externalsInfo: Externals
-): void {
+): Record<string, unknown> {
   const externalsContext = {} as Record<string, unknown>;
-  window[externalsName] = Object.entries(externalsInfo).reduce<
-    Record<string, unknown>
-  >((extObj, [name, { url }]) => {
-    Object.defineProperty(extObj, name, {
-      get: async (): Promise<unknown | undefined> => {
-        return (
-          externalsContext[name] ||
-          (await (async () => {
-            const cachedExternal = getExternal(url);
-            const foundContext = await processExternal(
-              externalsContext,
-              cachedExternal
-            );
-            return foundContext[name];
-          })())
-        );
-      },
-    });
-    return extObj;
-  }, {});
+  return Object.entries(externalsInfo).reduce<Record<string, unknown>>(
+    (extObj, [name, { url }]) => {
+      Object.defineProperty(extObj, name, {
+        get: async (): Promise<unknown | undefined> => {
+          return (
+            externalsContext[name] ||
+            (await (async () => {
+              const cachedExternal = getExternal(url);
+              const foundContext = await processExternal(
+                externalsContext,
+                cachedExternal
+              );
+              return (
+                foundContext[name] ||
+                ((window || global || self)[name] as unknown | undefined)
+              );
+            })())
+          );
+        },
+      });
+      return extObj;
+    },
+    {}
+  );
 }
 
-createExternalsObject('ISOLATED_EXTERNALS_NAME', ISOLATED_EXTERNALS_OBJECT);
+export const externals = createExternalsObject(ISOLATED_EXTERNALS_OBJECT);
+__webpack_modules__['isolatedExternalsModule'] = externals;
