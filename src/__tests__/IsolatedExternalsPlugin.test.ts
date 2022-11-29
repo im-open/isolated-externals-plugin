@@ -20,7 +20,7 @@ const externalsConfig = {
     globalName: 'Microsoft.ApplicationInsights',
   },
 };
-let runResult: webpack.Stats;
+let runResult: webpack.Stats | undefined;
 let fileResult: string;
 
 beforeAll((done) => {
@@ -39,7 +39,7 @@ beforeAll((done) => {
     plugins: [thePlugin],
   };
   webpack(webpackOptions, (err, result) => {
-    runResult = result!;
+    runResult = result;
     fileResult = execSync(
       `cat ${path.join(__dirname, '../../dist/component.js')}`,
       { encoding: 'utf8' }
@@ -49,7 +49,8 @@ beforeAll((done) => {
 });
 
 it('successfully completes', () => {
-  expect(runResult.hasErrors()).toBe(false);
+  expect(runResult).not.toBeFalsy();
+  expect(runResult?.hasErrors()).toBe(false);
 });
 
 test.each(

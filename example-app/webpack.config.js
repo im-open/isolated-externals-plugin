@@ -23,7 +23,7 @@ const externalsConfig = {
     },
     ['@microsoft/applicationinsights-web']: {
       url:
-        'https://www.unpkg.com/browse/@microsoft/applicationinsights-web@2.6.2/dist/applicationinsights-web.min.js',
+        'https://www.unpkg.com/@microsoft/applicationinsights-web@2.6.2/dist/applicationinsights-web.min.js',
       globalName: 'Microsoft.ApplicationInsights',
     },
   },

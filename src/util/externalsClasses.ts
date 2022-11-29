@@ -214,6 +214,12 @@ export class CachedExternal {
     });
   }
 
+  async loadResponse(): Promise<Response | undefined> {
+    const cache = await this.getCache();
+    await cache.add(this.url);
+    return cache.match(this.url);
+  }
+
   async load(): Promise<void> {
     if (this.loaded) return;
 
@@ -223,8 +229,8 @@ export class CachedExternal {
 
     try {
       const cache = await this.getCache();
-      await cache.add(this.url);
-      const response = await cache.match(this.url);
+      const response =
+        (await cache.match(this.url)) || (await this.loadResponse());
       this.failed = !response?.ok || response?.status >= 400;
       this.loaded = true;
     } catch (err) {
