@@ -1,6 +1,13 @@
 module.exports = {
   repositoryUrl: 'git@github.com:WTW-IM/isolated-externals-plugin.git',
-  branches: ['main'],
+  branches: [
+    'main',
+    {
+      name: '*',
+      prerelease: true,
+      channel: 'development',
+    },
+  ],
   plugins: [
     '@semantic-release/commit-analyzer',
     '@semantic-release/release-notes-generator',
