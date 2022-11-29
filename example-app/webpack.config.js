@@ -48,6 +48,7 @@ module.exports = {
   entry: {
     initial: path.join(__dirname, '/js/initial.js'),
     secondary: path.join(__dirname, '/js/secondary.js'),
+    tertiary: path.join(__dirname, '/js/tertiary.js'),
   },
   devtool: 'inline-source-map',
   output: {

@@ -1,5 +1,9 @@
 import { Compiler } from 'webpack';
-import { Externals, ExternalInfo } from './util/externalsClasses';
+import {
+  Externals,
+  ExternalInfo,
+  EXTERNALS_MODULE_NAME,
+} from './util/externalsClasses';
 import path from 'path';
 
 export interface IsolatedExternalsElement {
@@ -14,12 +18,16 @@ export default class IsolatedExternalsPlugin {
   readonly moduleDir: string;
   constructor(
     readonly config: IsolatedExternals = {},
-    readonly moduleLocation: string
+    readonly externalsModuleLocation: string,
+    readonly nonExternalsModuleLocation: string
   ) {
-    this.moduleLocation =
-      moduleLocation ||
+    this.externalsModuleLocation =
+      externalsModuleLocation ||
       path.join(__dirname, 'util', 'isolatedExternalsModule.js');
-    this.moduleDir = path.dirname(this.moduleLocation);
+    this.nonExternalsModuleLocation =
+      nonExternalsModuleLocation ||
+      path.join(__dirname, 'util', 'nonIsolatedExternalsModule.js');
+    this.moduleDir = path.dirname(this.externalsModuleLocation);
   }
 
   apply(compiler: Compiler): void {
@@ -69,7 +77,7 @@ export default class IsolatedExternalsPlugin {
               ...(!globalName
                 ? {}
                 : {
-                    [externalName]: `__webpack_modules__["isolatedExternalsModule"]["${globalName}"]`,
+                    [externalName]: `__webpack_modules__["${EXTERNALS_MODULE_NAME}"]["${globalName}"]`,
                   }),
             }),
             {}
@@ -98,7 +106,10 @@ export default class IsolatedExternalsPlugin {
       };
 
       const setupEntries = () => {
-        const modulePath = path.resolve(this.moduleLocation);
+        const isolatedModulePath = path.resolve(this.externalsModuleLocation);
+        const nonIsolatedModulePath = path.resolve(
+          this.nonExternalsModuleLocation
+        );
 
         const originalEntry = compiler.options.entry;
         type NormalizedEntries = typeof originalEntry extends infer U
@@ -106,27 +117,32 @@ export default class IsolatedExternalsPlugin {
             ? never
             : U
           : never;
-        const isolatedEntries = Object.entries(compiler.options.entry)
-          .filter(([entryName]) => Object.keys(this.config).includes(entryName))
-          .reduce<NormalizedEntries>(
-            (
-              finalEntries,
-              [entryKey, entryValue]: [
-                string,
-                NormalizedEntries[keyof NormalizedEntries]
-              ]
-            ) => ({
-              ...finalEntries,
-              [entryKey]: {
-                ...entryValue,
-                import: [
-                  `${modulePath}?${entryKey}`,
-                  ...(entryValue.import || []),
-                ],
-              },
-            }),
-            {}
-          );
+        const isolatedKeys = Object.keys(this.config);
+        const isolatedEntries = Object.entries(
+          compiler.options.entry
+        ).reduce<NormalizedEntries>(
+          (
+            finalEntries,
+            [entryKey, entryValue]: [
+              string,
+              NormalizedEntries[keyof NormalizedEntries]
+            ]
+          ) => ({
+            ...finalEntries,
+            [entryKey]: {
+              ...entryValue,
+              import: [
+                `${
+                  isolatedKeys.includes(entryKey)
+                    ? isolatedModulePath
+                    : nonIsolatedModulePath
+                }?${entryKey}`,
+                ...(entryValue.import || []),
+              ],
+            },
+          }),
+          {}
+        );
         compiler.options.entry = { ...originalEntry, ...isolatedEntries };
       };
 
