@@ -21,6 +21,11 @@ const externalsConfig = {
       url: 'https://unpkg.com/styled-components@5/dist/styled-components.js',
       globalName: 'styled',
     },
+    ['@microsoft/applicationinsights-web']: {
+      url:
+        'https://www.unpkg.com/browse/@microsoft/applicationinsights-web@2.6.2/dist/applicationinsights-web.min.js',
+      globalName: 'Microsoft.ApplicationInsights',
+    },
   },
   secondary: {
     react: {

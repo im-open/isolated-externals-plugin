@@ -1,25 +1,32 @@
 import path from 'path';
 import webpack from 'webpack';
 import IsolatedExternalsPlugin from '../IsolatedExternalsPlugin';
+import { execSync } from 'child_process';
 
 let thePlugin: IsolatedExternalsPlugin;
 let webpackOptions: webpack.Configuration;
+const externalsConfig = {
+  react: {
+    url: 'https://unpkg.com/react@17/umd/react.development.js',
+    globalName: 'React',
+  },
+  ['react-dom']: {
+    url: 'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
+    globalName: 'ReactDOM',
+  },
+  ['@microsoft/applicationinsights-web']: {
+    url:
+      'https://www.unpkg.com/browse/@microsoft/applicationinsights-web@2.6.2/dist/applicationinsights-web.min.js',
+    globalName: 'Microsoft.ApplicationInsights',
+  },
+};
+let runResult: webpack.Stats;
+let fileResult: string;
 
-beforeEach(() => {
+beforeAll((done) => {
   thePlugin = new IsolatedExternalsPlugin(
     {
-      component: {
-        react: {
-          url: 'https://unpkg.com/react@17/umd/react.development.js',
-        },
-        ['react-dom']: {
-          url: 'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
-        },
-        ['@microsoft/applicationinsights-web']: {
-          url:
-            'https://www.unpkg.com/browse/@microsoft/applicationinsights-web@2.6.2/dist/applicationinsights-web.min.js',
-        },
-      },
+      component: externalsConfig,
     },
     path.join(__dirname, '../../dist/util/isolatedExternalsModule.js')
   );
@@ -31,11 +38,28 @@ beforeEach(() => {
     devtool: 'source-map',
     plugins: [thePlugin],
   };
-});
-
-it('successfully completes', (done) => {
   webpack(webpackOptions, (err, result) => {
-    console.log(result?.toString());
+    runResult = result!;
+    fileResult = execSync(
+      `cat ${path.join(__dirname, '../../dist/component.js')}`,
+      { encoding: 'utf8' }
+    );
     done();
   });
+});
+
+it('successfully completes', () => {
+  expect(runResult.hasErrors()).toBe(false);
+});
+
+test.each(
+  Object.entries(externalsConfig).map(([packageName, { globalName, url }]) => [
+    packageName,
+    globalName,
+    url,
+  ])
+)('fileResult contains expected values', (packageName, globalName, url) => {
+  expect(fileResult).toContain(packageName);
+  expect(fileResult).toContain(url);
+  expect(fileResult).toContain(globalName);
 });

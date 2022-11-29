@@ -5,20 +5,32 @@ declare global {
   const ISOLATED_EXTERNALS_OBJECT: Externals;
   const __webpack_modules__: Record<string, unknown>;
   interface Window {
-    __isolatedExternalsCacheV2: CachedExternals;
+    __isolatedExternalsCacheV3: CachedExternals;
   }
 }
 
 function getExternal(url: string): CachedExternal {
-  window.__isolatedExternalsCacheV2 = window.__isolatedExternalsCacheV2 || {};
+  window.__isolatedExternalsCacheV3 = window.__isolatedExternalsCacheV3 || {};
   return (
-    window.__isolatedExternalsCacheV2[url] ||
+    window.__isolatedExternalsCacheV3[url] ||
     (() => {
       const theExternal = new CachedExternal(url);
-      window.__isolatedExternalsCacheV2[url] = theExternal;
+      window.__isolatedExternalsCacheV3[url] = theExternal;
       return theExternal;
     })()
   );
+}
+
+function getValue(strName: string, context: Record<string, unknown>) {
+  const names = strName.split('.');
+  let value: unknown = context;
+  while (names.length) {
+    const lookup = names.shift();
+    if (!lookup) break;
+
+    value = (value as Record<string, unknown>)[lookup];
+  }
+  return value;
 }
 
 function createExternalsObject(
@@ -32,7 +44,7 @@ function createExternalsObject(
       Object.defineProperty(extObj, globalName, {
         get: async (): Promise<unknown | undefined> => {
           return (
-            externalsContext[globalName] ||
+            getValue(globalName, externalsContext) ||
             (await (async () => {
               const cachedExternal = getExternal(url);
               const foundContext = await processExternal(
@@ -40,8 +52,14 @@ function createExternalsObject(
                 cachedExternal
               );
               return (
-                foundContext[globalName] ||
-                ((window || global || self)[globalName] as unknown | undefined)
+                getValue(globalName, foundContext) ||
+                getValue(
+                  globalName,
+                  ((window || global || self) as unknown) as Record<
+                    string,
+                    unknown
+                  >
+                )
               );
             })())
           );
