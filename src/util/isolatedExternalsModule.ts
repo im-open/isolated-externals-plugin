@@ -1,5 +1,11 @@
-import { CachedExternal, Externals, CachedExternals } from './externalsClasses';
+import {
+  CachedExternal,
+  Externals,
+  CachedExternals,
+  EXTERNALS_MODULE_NAME,
+} from './externalsClasses';
 import { processExternal } from './processExternals';
+import getValue from './getValue';
 
 declare global {
   const ISOLATED_EXTERNALS_OBJECT: Externals;
@@ -30,18 +36,6 @@ async function loadExternal(context: Record<string, unknown>, url: string) {
   return processingPromise;
 }
 
-function getValue(strName: string, context: Record<string, unknown>) {
-  const names = strName.split('.');
-  let value: unknown = context;
-  while (names.length) {
-    const lookup = names.shift();
-    if (!lookup) break;
-
-    value = (value as Record<string, unknown>)[lookup];
-  }
-  return value;
-}
-
 function createExternalsObject(
   externalsInfo: Externals
 ): Record<string, unknown> {
@@ -70,4 +64,4 @@ function createExternalsObject(
 }
 
 export const externals = createExternalsObject(ISOLATED_EXTERNALS_OBJECT);
-__webpack_modules__['isolatedExternalsModule'] = externals;
+__webpack_modules__[EXTERNALS_MODULE_NAME] = externals;

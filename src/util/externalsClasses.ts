@@ -251,3 +251,5 @@ export class CachedExternal {
     this.loading = false;
   }
 }
+
+export const EXTERNALS_MODULE_NAME = 'externalsModule';
