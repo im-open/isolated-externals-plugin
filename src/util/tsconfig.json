@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "module": "es2020",
+    "module": "commonjs",
     "isolatedModules": false,
     "outDir": "../../dist/util",
     "resolveJsonModule": false,

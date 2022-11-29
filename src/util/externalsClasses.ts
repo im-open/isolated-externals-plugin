@@ -2,7 +2,7 @@
 export type CachedExternals = Record<string, CachedExternal>;
 
 export interface ExternalInfo {
-  name: string;
+  globalName?: string;
   url: string;
 }
 

@@ -1,38 +1,19 @@
 import { Compiler } from 'webpack';
+import { Externals, ExternalInfo } from './util/externalsClasses';
 import path from 'path';
 
-export interface IsolatedExternalInfo {
-  name: string;
-  url: string;
-  loaded?: boolean;
-}
-
 export interface IsolatedExternalsElement {
-  [key: string]: IsolatedExternalInfo;
+  [key: string]: ExternalInfo;
 }
 
 export interface IsolatedExternals {
   [key: string]: IsolatedExternalsElement;
 }
 
-type IsolatedExternalsConfig = {
-  [key: string]: {
-    [key: string]: { url: string };
-  };
-};
-
-function getExternalsNames(config: IsolatedExternalsConfig) {
-  const allExternals = Object.entries(config).reduce<string[]>(
-    (names, [, externals]) => [...names, ...Object.keys(externals)],
-    []
-  );
-  return Array.from(new Set(allExternals));
-}
-
 export default class IsolatedExternalsPlugin {
   readonly moduleDir: string;
   constructor(
-    readonly config: IsolatedExternalsConfig = {},
+    readonly config: IsolatedExternals = {},
     readonly moduleLocation: string
   ) {
     this.moduleLocation =
@@ -43,18 +24,53 @@ export default class IsolatedExternalsPlugin {
 
   apply(compiler: Compiler): void {
     compiler.hooks.afterEnvironment.tap('IsolatedExternalsPlugin', () => {
+      const existingExternals = compiler.options.externals || {};
+      const isolatedExternals = Object.entries(this.config);
+      const finalIsolatedExternals = isolatedExternals.reduce<IsolatedExternals>(
+        (finalExternals, [entryName, exts]) => {
+          const finalExts = Object.entries(exts).reduce<Externals>(
+            (allExts, [packageName, ext]) => ({
+              ...allExts,
+              [packageName]: {
+                ...ext,
+                globalName:
+                  ext.globalName ||
+                  (existingExternals as Record<string, string | undefined>)[
+                    packageName
+                  ],
+              },
+            }),
+            {}
+          );
+          return { ...finalExternals, [entryName]: finalExts };
+        },
+        {}
+      );
+      const entryExternals = Object.values(finalIsolatedExternals);
+      const allIsolatedExternals = entryExternals.reduce<Externals>(
+        (finalExternals, externalConfig) => ({
+          ...finalExternals,
+          ...externalConfig,
+        }),
+        {} as Externals
+      );
+
       const setupExternals = () => {
         compiler.options.externalsType = 'promise';
-        const existingExternals = compiler.options.externals || {};
-        const isolatedExternalsNames = getExternalsNames(this.config);
         compiler.options.externals = {
           ...(typeof existingExternals === 'string'
             ? { existingExternals }
             : existingExternals),
-          ...isolatedExternalsNames.reduce<Record<string, string>>(
-            (exts, name) => ({
+          ...Object.entries(allIsolatedExternals).reduce<
+            Record<string, string>
+          >(
+            (exts, [externalName, { globalName }]) => ({
               ...exts,
-              [name]: `__webpack_modules__["isolatedExternalsModule"]["${name}"]`,
+              ...(!globalName
+                ? {}
+                : {
+                    [externalName]: `__webpack_modules__["isolatedExternalsModule"]["${globalName}"]`,
+                  }),
             }),
             {}
           ),
@@ -64,18 +80,20 @@ export default class IsolatedExternalsPlugin {
       const setupRules = () => {
         compiler.options.module.rules = [
           ...compiler.options.module.rules,
-          ...Object.entries(this.config).map(([entryName, externals]) => ({
-            test: /isolatedExternalsModule.js/,
-            resourceQuery: new RegExp(entryName),
-            use: [
-              {
-                loader: path.resolve(
-                  path.join(this.moduleDir, 'isolatedExternalsLoader.js')
-                ),
-                options: externals,
-              },
-            ],
-          })),
+          ...Object.entries(finalIsolatedExternals).map(
+            ([entryName, externals]) => ({
+              test: /isolatedExternalsModule.js/,
+              resourceQuery: new RegExp(entryName),
+              use: [
+                {
+                  loader: path.resolve(
+                    path.join(this.moduleDir, 'isolatedExternalsLoader.js')
+                  ),
+                  options: externals,
+                },
+              ],
+            })
+          ),
         ];
       };
 
