@@ -21,6 +21,15 @@ function getExternal(url: string): CachedExternal {
   );
 }
 
+const prevExternals: Promise<unknown>[] = [];
+async function loadExternal(context: Record<string, unknown>, url: string) {
+  await Promise.all(prevExternals);
+  const cachedExternal = getExternal(url);
+  const processingPromise = processExternal(context, cachedExternal);
+  prevExternals.push(processingPromise);
+  return processingPromise;
+}
+
 function getValue(strName: string, context: Record<string, unknown>) {
   const names = strName.split('.');
   let value: unknown = context;
@@ -41,27 +50,16 @@ function createExternalsObject(
     (extObj, [, { url, globalName }]) => {
       if (!globalName) return extObj;
 
+      const externalLoad = loadExternal(externalsContext, url);
       Object.defineProperty(extObj, globalName, {
         get: async (): Promise<unknown | undefined> => {
+          const foundContext = await externalLoad;
           return (
-            getValue(globalName, externalsContext) ||
-            (await (async () => {
-              const cachedExternal = getExternal(url);
-              const foundContext = await processExternal(
-                externalsContext,
-                cachedExternal
-              );
-              return (
-                getValue(globalName, foundContext) ||
-                getValue(
-                  globalName,
-                  ((window || global || self) as unknown) as Record<
-                    string,
-                    unknown
-                  >
-                )
-              );
-            })())
+            getValue(globalName, foundContext) ||
+            getValue(
+              globalName,
+              ((window || global || self) as unknown) as Record<string, unknown>
+            )
           );
         },
       });
