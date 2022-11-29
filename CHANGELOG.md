@@ -1,3 +1,31 @@
+# [2.0.0-webpack-5-integration.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.2...v2.0.0-webpack-5-integration.1) (2022-11-29)
+
+### Breaking
+
+- only supporting webpack 5 ([d5e5f47](https://github.com/WTW-IM/isolated-externals-plugin/commit/d5e5f47562e0fb411174929d02bbc7a88a47f0ba))
+
+### Build
+
+- adding some clarifying styles to example-app ([29e70c9](https://github.com/WTW-IM/isolated-externals-plugin/commit/29e70c936155f6017ebebe43239d24e0bfb82c83))
+- allowing releases from non-main branches ([1978b09](https://github.com/WTW-IM/isolated-externals-plugin/commit/1978b09c9fa443907c63796b3354c5d7d8f31818))
+- floating node version in release.yml ([08fbef1](https://github.com/WTW-IM/isolated-externals-plugin/commit/08fbef1ee444ae4fe9536360a0c45368136c8573))
+- removing unnecessary dependencies ([6e5f798](https://github.com/WTW-IM/isolated-externals-plugin/commit/6e5f79819c96b17969ea23c7f165d93c3bc19b0c))
+- updating to webpack 5 and clearing npm audit ([fef41ca](https://github.com/WTW-IM/isolated-externals-plugin/commit/fef41ca361a5e4d6a94ed2e8e73dd5a7dd72b4da))
+
+### Fix
+
+- ensuring all externals load in order ([4e26ad2](https://github.com/WTW-IM/isolated-externals-plugin/commit/4e26ad2e8c89a8c401635888d4bc553adc4e0b5b))
+- ensuring we reference the UMD name for loaded externals ([54bf288](https://github.com/WTW-IM/isolated-externals-plugin/commit/54bf2886a0b9c2783b244cb1007797ae359f34d2))
+
+### New
+
+- rearranging utils for webpack 5 integration ([6d24118](https://github.com/WTW-IM/isolated-externals-plugin/commit/6d24118d75016389bcf4dc4bbf8ee588eb6b74ef))
+
+### Update
+
+- handling nested globalNames ([461b9fb](https://github.com/WTW-IM/isolated-externals-plugin/commit/461b9fb4c8b079bb970ba12974ad1165b36ef154))
+- handling non-isolated externals ([eba4418](https://github.com/WTW-IM/isolated-externals-plugin/commit/eba44187b56b7922263492f97007e4fb248fa010))
+
 ## [1.10.2](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.1...v1.10.2) (2021-12-15)
 
 ### Build
