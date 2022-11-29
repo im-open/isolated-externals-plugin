@@ -26,11 +26,13 @@ function createExternalsObject(
 ): Record<string, unknown> {
   const externalsContext = {} as Record<string, unknown>;
   return Object.entries(externalsInfo).reduce<Record<string, unknown>>(
-    (extObj, [name, { url }]) => {
-      Object.defineProperty(extObj, name, {
+    (extObj, [, { url, globalName }]) => {
+      if (!globalName) return extObj;
+
+      Object.defineProperty(extObj, globalName, {
         get: async (): Promise<unknown | undefined> => {
           return (
-            externalsContext[name] ||
+            externalsContext[globalName] ||
             (await (async () => {
               const cachedExternal = getExternal(url);
               const foundContext = await processExternal(
@@ -38,8 +40,8 @@ function createExternalsObject(
                 cachedExternal
               );
               return (
-                foundContext[name] ||
-                ((window || global || self)[name] as unknown | undefined)
+                foundContext[globalName] ||
+                ((window || global || self)[globalName] as unknown | undefined)
               );
             })())
           );
