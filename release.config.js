@@ -1,11 +1,47 @@
+const { execSync } = require('child_process');
+const MAIN_BRANCH = 'main';
+
+const branchName = execSync('git rev-parse --abbrev-ref HEAD')
+  .toString()
+  .replace('\n', '');
+
+const branchSha = execSync('git rev-parse --short HEAD')
+  .toString()
+  .replace('\n', '');
+
+const isMainBranch = branchName === MAIN_BRANCH;
+const extraGithubConfig = isMainBranch
+  ? {}
+  : {
+      successComment: `
+This PR is part of this prerelease version for testing: \${nextRelease.version}
+You can test it by using:
+\`\`\`bash
+npm install isolated-externals-plugin@\${nextRelease.version}
+\`\`\`
+`,
+    };
+
+const extraPlugins = isMainBranch
+  ? [
+      [
+        '@semantic-release/git',
+        {
+          message:
+            'Docs: ${nextRelease.version} [skip ci]\n\n${nextRelease.note}',
+        },
+      ],
+    ]
+  : [];
+
 module.exports = {
   repositoryUrl: 'git@github.com:WTW-IM/isolated-externals-plugin.git',
   branches: [
     'main',
     {
       name: '*',
-      prerelease: true,
-      channel: 'development',
+      prerelease: `\${name}-${branchSha}`,
+      channel: '${name}',
     },
   ],
   plugins: [
@@ -17,15 +53,10 @@ module.exports = {
       '@semantic-release/github',
       {
         assets: ['*.tgz'],
+        ...extraGithubConfig,
       },
     ],
-    [
-      '@semantic-release/git',
-      {
-        message:
-          'Docs: ${nextRelease.version} [skip ci]\n\n${nextRelease.note}',
-      },
-    ],
+    ...extraPlugins,
   ],
   preset: 'eslint',
 };
