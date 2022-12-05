@@ -27,24 +27,28 @@ function getExternal(url: string): CachedExternal {
   );
 }
 
-const prevExternals: Promise<unknown>[] = [];
-async function loadExternal(context: Record<string, unknown>, url: string) {
-  await Promise.all(prevExternals);
+async function loadExternal(
+  context: Record<string, unknown>,
+  url: string,
+  previousDeps?: Promise<unknown>[]
+) {
+  await Promise.all(previousDeps || []);
   const cachedExternal = getExternal(url);
   const processingPromise = processExternal(context, cachedExternal);
-  prevExternals.push(processingPromise);
   return processingPromise;
 }
 
 function createExternalsObject(
   externalsInfo: Externals
 ): Record<string, unknown> {
+  let orderedDeps: Promise<unknown>[] = [];
   const externalsContext = {} as Record<string, unknown>;
   return Object.entries(externalsInfo).reduce<Record<string, unknown>>(
     (extObj, [, { url, globalName }]) => {
       if (!globalName) return extObj;
 
-      const externalLoad = loadExternal(externalsContext, url);
+      const externalLoad = loadExternal(externalsContext, url, orderedDeps);
+      orderedDeps = [...orderedDeps, externalLoad];
       Object.defineProperty(extObj, globalName, {
         get: async (): Promise<unknown | undefined> => {
           const foundContext = await externalLoad;
