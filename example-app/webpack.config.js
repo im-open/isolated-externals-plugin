@@ -36,6 +36,10 @@ const externalsConfig = {
       url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
       globalName: 'ReactDOM',
     },
+    ['react-is']: {
+      url: 'https://unpkg.com/react-is@16/umd/react-is.development.js',
+      globalName: 'ReactIs',
+    },
     ['styled-components']: {
       url: 'https://unpkg.com/styled-components@4/dist/styled-components.js',
       globalName: 'styled',
@@ -50,7 +54,7 @@ module.exports = {
     secondary: path.join(__dirname, '/js/secondary.js'),
     tertiary: path.join(__dirname, '/js/tertiary.js'),
   },
-  devtool: 'inline-source-map',
+  devtool: 'eval-source-map',
   output: {
     filename: 'dist/[name]-[contenthash].js',
   },
