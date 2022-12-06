@@ -88,10 +88,16 @@ export default class IsolatedExternalsPlugin {
       const setupRules = () => {
         compiler.options.module.rules = [
           ...compiler.options.module.rules,
-          ...Object.entries(finalIsolatedExternals).map(
-            ([entryName, externals]) => ({
+          ...Object.entries(finalIsolatedExternals)
+            // We want the longest names last so the most specific ones are matched first
+            // module rules are processed in reverse order
+            // https://webpack.js.org/concepts/loaders/#configuration
+            .sort(function reverseNameLength([entryNameA], [entryNameB]) {
+              return entryNameA.length > entryNameB.length ? 1 : -1;
+            })
+            .map(([entryName, externals]) => ({
               test: /isolatedExternalsModule.js/,
-              resourceQuery: new RegExp(entryName),
+              resourceQuery: new RegExp(`${entryName}$`),
               use: [
                 {
                   loader: path.resolve(
@@ -100,8 +106,7 @@ export default class IsolatedExternalsPlugin {
                   options: externals,
                 },
               ],
-            })
-          ),
+            })),
         ];
       };
 

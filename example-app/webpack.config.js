@@ -4,7 +4,7 @@ const IsolatedExternalsPlugin = require('../dist/IsolatedExternalsPlugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const externalsConfig = {
-  initial: {
+  load: {
     react: {
       url: 'https://unpkg.com/react@16/umd/react.development.js',
       globalName: 'React',
@@ -27,7 +27,7 @@ const externalsConfig = {
       globalName: 'Microsoft.ApplicationInsights',
     },
   },
-  secondary: {
+  second_load: {
     react: {
       url: 'https://unpkg.com/react@16/umd/react.development.js',
       globalName: 'React',
@@ -50,9 +50,9 @@ const externalsConfig = {
 module.exports = {
   mode: 'development',
   entry: {
-    initial: path.join(__dirname, '/js/initial.js'),
-    secondary: path.join(__dirname, '/js/secondary.js'),
-    tertiary: path.join(__dirname, '/js/tertiary.js'),
+    load: path.join(__dirname, '/js/initial.js'),
+    second_load: path.join(__dirname, '/js/secondary.js'),
+    tertiary_load: path.join(__dirname, '/js/tertiary.js'),
   },
   devtool: 'eval-source-map',
   output: {
