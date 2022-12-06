@@ -67,7 +67,7 @@ export default class IsolatedExternalsPlugin {
         compiler.options.externalsType = 'promise';
         compiler.options.externals = {
           ...(typeof existingExternals === 'string'
-            ? { existingExternals }
+            ? { [existingExternals]: existingExternals }
             : existingExternals),
           ...Object.entries(allIsolatedExternals).reduce<
             Record<string, string>
