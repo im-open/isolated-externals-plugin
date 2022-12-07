@@ -181,5 +181,10 @@ export default class IsolatedExternalsPlugin {
       setupRules();
       setupEntries();
     });
+
+    compiler.hooks.compilation.tap('IsolatedExternalsPlugin', (compilation) => {
+      compilation.fileDependencies.add(this.externalsModuleLocation);
+      compilation.fileDependencies.add(this.nonExternalsModuleLocation);
+    });
   }
 }
