@@ -1,4 +1,7 @@
 import { Compiler } from 'webpack';
+import { validate } from 'schema-utils';
+import { JSONSchema7 } from 'schema-utils/declarations/validate';
+
 import {
   Externals,
   ExternalInfo,
@@ -14,6 +17,25 @@ export interface IsolatedExternals {
   [key: string]: IsolatedExternalsElement;
 }
 
+const configSchema: JSONSchema7 = {
+  type: 'object',
+  patternProperties: {
+    '.*': {
+      type: 'object',
+      patternProperties: {
+        '.*': {
+          type: 'object',
+          required: ['url'],
+          properties: {
+            url: { type: 'string' },
+            globalName: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+};
+
 export default class IsolatedExternalsPlugin {
   readonly moduleDir: string;
   constructor(
@@ -21,6 +43,10 @@ export default class IsolatedExternalsPlugin {
     readonly externalsModuleLocation: string,
     readonly nonExternalsModuleLocation: string
   ) {
+    validate(configSchema, config, {
+      name: 'IsolatedExternalsPlugin',
+      baseDataPath: 'configuration',
+    });
     this.externalsModuleLocation =
       externalsModuleLocation ||
       path.join(__dirname, 'util', 'isolatedExternalsModule.js');
