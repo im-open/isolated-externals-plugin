@@ -1,3 +1,43 @@
+# [2.0.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.2...v2.0.0) (2022-12-08)
+
+### Breaking
+
+- only supporting webpack 5 ([7795fa1](https://github.com/WTW-IM/isolated-externals-plugin/commit/7795fa1f86596dff2ca24374de1cb36ec4572748))
+
+### Build
+
+- adding some clarifying styles to example-app ([d8b6c96](https://github.com/WTW-IM/isolated-externals-plugin/commit/d8b6c96cedf95dbe7b5a88c99b610b9394d5cc69))
+- allowing releases from non-main branches ([1978b09](https://github.com/WTW-IM/isolated-externals-plugin/commit/1978b09c9fa443907c63796b3354c5d7d8f31818))
+- fixing examples dependencies — including ReactIs ([132c85c](https://github.com/WTW-IM/isolated-externals-plugin/commit/132c85cf56ce29d2b2a19f331f1329a3a37b844e))
+- floating node version in release.yml ([08fbef1](https://github.com/WTW-IM/isolated-externals-plugin/commit/08fbef1ee444ae4fe9536360a0c45368136c8573))
+- removing unnecessary dependencies ([59a4674](https://github.com/WTW-IM/isolated-externals-plugin/commit/59a46741868e1de7fc611ad0b7bbc4a4896e5af8))
+- splitting release config for non-main branches ([63b52cb](https://github.com/WTW-IM/isolated-externals-plugin/commit/63b52cba60037cf9d92b9d98aa9a542813b792c4))
+- updating to webpack 5 and clearing npm audit ([eab8bc1](https://github.com/WTW-IM/isolated-externals-plugin/commit/eab8bc1fd8fad2ce016b09ed677029b71a17193b))
+
+### Docs
+
+- updating README with new configuration ([8a49cd9](https://github.com/WTW-IM/isolated-externals-plugin/commit/8a49cd9a0e77ac872f5963d80d62774932cf5b20))
+
+### Fix
+
+- completely awaiting previous dependencies ([7ba8dfb](https://github.com/WTW-IM/isolated-externals-plugin/commit/7ba8dfbad1540f9750ec6de142766ed0bc92c032))
+- ensuring all externals load in order ([2c74158](https://github.com/WTW-IM/isolated-externals-plugin/commit/2c741580cb2f3d317c91424575c30a9b0c65d3b4))
+- ensuring nonIsolatedModule works in non-window environments ([8db7536](https://github.com/WTW-IM/isolated-externals-plugin/commit/8db7536e388fa6dfdfd5ff53db3f35238ba7390d))
+- ensuring string existing externals become a meaningful object ([2ddb06a](https://github.com/WTW-IM/isolated-externals-plugin/commit/2ddb06ae0c154cb9f3696cd68492a7c0940db288))
+- ensuring we can have similar named entries and still match externals correctly ([333b1bf](https://github.com/WTW-IM/isolated-externals-plugin/commit/333b1bfe9390e1603471a5085d3032dd3297baaf))
+- ensuring we reference the UMD name for loaded externals ([0fe6064](https://github.com/WTW-IM/isolated-externals-plugin/commit/0fe606486b3576f9f83f54eea7411d5cb20418ca))
+
+### New
+
+- rearranging utils for webpack 5 integration ([7bc835b](https://github.com/WTW-IM/isolated-externals-plugin/commit/7bc835b1b6eb5f8b80a675813fd6d83c34e9cd63))
+
+### Update
+
+- adding dependent module files to fileDependencies ([353dfd5](https://github.com/WTW-IM/isolated-externals-plugin/commit/353dfd53d3084ae5764221b8da49b53477415d8f))
+- adding schema validation for IsolatedExternalsPlugin configuration ([8814dd7](https://github.com/WTW-IM/isolated-externals-plugin/commit/8814dd79e04d7ba76d5fd374abbbf48f296c468b))
+- handling nested globalNames ([8162e47](https://github.com/WTW-IM/isolated-externals-plugin/commit/8162e479d94cfd3161a81a0588e275c3ac3104de))
+- handling non-isolated externals ([11f5e3c](https://github.com/WTW-IM/isolated-externals-plugin/commit/11f5e3c3c06f9ac54c2fef5fc70928ad793cb214))
+
 ## [1.10.2](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.1...v1.10.2) (2021-12-15)
 
 ### Build
