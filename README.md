@@ -13,54 +13,72 @@ npm install --save-dev isolated-externals-plugin
 
 ## Usage
 
-The `IsolatedExternalsPlugin` allows you to load external dependencies into the scope of your webpack bundle without having to have them in your global scope. If you're curious about why you might want this, there are [some use cases listed below](#why-load-externals-locally-instead-of-globally).
+The `IsolatedExternalsPlugin` allows you to load external dependencies inside the scope of your webpack bundle without having to have them in your global scope. If you're curious about why you might want this, there are [some use cases listed below](#why-load-externals-locally-instead-of-globally).
+
+It's an opinionated plugin in this way:
+
+- It forcibly sets [`externalsType` to `promise`](https://webpack.js.org/configuration/externals/#externalstypepromise) (but should still work with UMD-type externals)
 
 The plugin is built as an ES Module, so you'll need to load it in by using the `default` property:
 
-```javascript
-const IsolatedExternalsPlugin = require('isolated-externals-plugin').default;
-```
-
-It currently only works with UMD javascript dependencies, and with an `externals` declaration that has a similar shape to this:
-
-```javascript
-  ...
-  externals: {
-    ["react-dom"]: "ReactDOM",
-    react: "React",
-  },
-  ...
-```
-
-For the `externals` above, your `IsolatedExternalsPlugin` configuration might look like the following:
+An `IsolatedExternalsPlugin` configuration might look like the following:
 
 ```javascript
 new IsolatedExternalsPlugin({
-  entryName: {
+  entry1: {
     react: {
-      url: 'https://unpkg.com/react@16/umd/react.development.js'
+      url: 'https://unpkg.com/react@16/umd/react.development.js',
+      globalName: 'React',
     },
     ['react-dom']: {
-      url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js'
-    }
-  }
+      url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
+      globalName: 'ReactDOM',
+    },
+  },
+  entry2: {
+    react: {
+      url: 'https://unpkg.com/react@16/umd/react.development.js',
+      globalName: 'React',
+    },
+    ['react-dom']: {
+      url: 'https://unpkg.com/react-dom@16/umd/react-dom.development.js',
+      globalName: 'ReactDOM',
+    },
+  },
 });
 ```
 
-`entryName`, in this instance, is the name of one of your webpack [Entry Points](https://webpack.js.org/concepts/entry-points/).
+Each property of the configuration follows this structure:
+
+```javascript
+[entryName]: {
+  [packageName]: {
+    url: [url],
+    globalName: [globalName]
+  }
+}
+```
+
+| Part            | Description                                                                                                                                                                                                                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entryName`\*   | The name of one of your webpack [Entry Points](https://webpack.js.org/concepts/entry-points/).                                                                                                                                                                                                  |
+| `packageName`\* | The name of the import for your externalized dependency (like 'react-dom').                                                                                                                                                                                                                     |
+| `url`\*         | The URL from which to load your dependency file.                                                                                                                                                                                                                                                |
+| `globalName`    | The UMD name of your dependency (like `ReactDOM`). If this is not provided, `IsolatedExternalsPlugin` will try to match the `packageName` to one of your [`externals`](https://webpack.js.org/configuration/externals/#externals) entries, and will use the value from that as the `globalName` |
+| \*              | _required_                                                                                                                                                                                                                                                                                      |
 
 The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list the ones they depend on first.
 
 ## How It Works
 
-`IsolatedExternalsPlugin` wraps your webpack bundle in a self-calling function, evaluating the external dependencies and your bundle with an in-memory context object. This allows those external dependencies to only exist on that in-memory context, and will not require them to exist on the broader global context.
+`IsolatedExternalsPlugin` loads the text of your externals URLs via a shared [Cache](https://developer.mozilla.org/en-US/docs/Web/API/Cache) (or a shared global object if `Cache` is not available), and processes the text on a context object which is singular to your bundle. This allows you to load multiple bundles per page with different versions of a dependency—or with the same version of a dependency separately—without polluting a global scope, and without loading the same dependency over the wire more than once. This keeps bundle sizes down while also providing complete autonomy to any individual JS bundle.
 
 ## Why load externals locally instead of globally?
 
 Here are two valid use cases. There may be others, but these are the reason we built this plugin!:
 
 1. You want to load different javascript apps on the same page with different versions of the same dependency (like React).
-2. You want to load more than one javascript app onto the same page with the same dependency, but ignorant of each other and the global context (like in micro frontends). This case leverages browser caching to allow each app to be small in byte size, but to load the same libraries more than once on the page without transferring them more than once over the wire
+2. You want to load more than one javascript app onto the same page with the same dependency, but ignorant of each other and the global context (like in micro frontends). This allows each app to be small in byte size, and allows the overall page to never load the same dependency more than once.
 
 ## Contributing
 

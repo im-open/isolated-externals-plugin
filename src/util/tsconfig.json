@@ -1,16 +1,12 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "module": "none",
+    "module": "commonjs",
     "isolatedModules": false,
     "outDir": "../../dist/util",
-    "outFile": "../../dist/util/loadExternals.js",
     "resolveJsonModule": false,
     "suppressImplicitAnyIndexErrors": true
   },
-  "include": [
-    "../../node_modules/promise-polyfill/dist/polyfill.min.js",
-    "./*.ts"
-  ],
+  "include": ["./*.ts"],
   "exclude": []
 }
