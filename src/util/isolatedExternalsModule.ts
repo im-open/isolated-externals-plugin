@@ -6,6 +6,7 @@ import {
 } from './externalsClasses';
 import { processExternal } from './processExternals';
 import getValue from './getValue';
+import getGlobal from './getGlobal';
 
 declare global {
   const ISOLATED_EXTERNALS_OBJECT: Externals;
@@ -43,28 +44,31 @@ function createExternalsObject(
 ): Record<string, unknown> {
   let orderedDeps: Promise<unknown>[] = [];
   const externalsContext = {} as Record<string, unknown>;
-  return Object.entries(externalsInfo).reduce<Record<string, unknown>>(
-    (extObj, [, { url, globalName }]) => {
-      if (!globalName) return extObj;
+  const externalsObject = Object.entries(externalsInfo).reduce<
+    Record<string, unknown>
+  >((extObj, [, { url, globalName }]) => {
+    if (!globalName) return extObj;
 
-      const externalLoad = loadExternal(externalsContext, url, orderedDeps);
-      orderedDeps = [...orderedDeps, externalLoad];
-      Object.defineProperty(extObj, globalName, {
-        get: async (): Promise<unknown | undefined> => {
-          const foundContext = await externalLoad;
-          return (
-            getValue(globalName, foundContext) ||
-            getValue(
-              globalName,
-              ((window || global || self) as unknown) as Record<string, unknown>
-            )
-          );
-        },
-      });
-      return extObj;
+    const externalLoad = loadExternal(externalsContext, url, orderedDeps);
+    orderedDeps = [...orderedDeps, externalLoad];
+    Object.defineProperty(extObj, globalName, {
+      get: async (): Promise<unknown | undefined> => {
+        const foundContext = await externalLoad;
+        return (
+          getValue(globalName, foundContext) ||
+          getValue(globalName, getGlobal())
+        );
+      },
+    });
+    return extObj;
+  }, {});
+
+  const externalsGlobalProxy = new Proxy(externalsObject, {
+    get: (target, prop): unknown => {
+      return Reflect.get(target, prop) || Reflect.get(getGlobal(), prop);
     },
-    {}
-  );
+  });
+  return externalsGlobalProxy;
 }
 
 export const externals = createExternalsObject(ISOLATED_EXTERNALS_OBJECT);

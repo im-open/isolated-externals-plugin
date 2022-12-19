@@ -82,6 +82,7 @@
     "webpack-dev-server": "^4.11.1"
   },
   "dependencies": {
-    "schema-utils": "^4.0.0"
+    "schema-utils": "^4.0.0",
+    "typescript-tuple": "^5.0.1"
   }
 }

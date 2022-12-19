@@ -1,4 +1,5 @@
-import { Compiler } from 'webpack';
+import { Configuration, Compiler } from 'webpack';
+import { Concat } from 'typescript-tuple';
 import { validate } from 'schema-utils';
 import { JSONSchema7 } from 'schema-utils/declarations/validate';
 
@@ -8,6 +9,22 @@ import {
   EXTERNALS_MODULE_NAME,
 } from './util/externalsClasses';
 import path from 'path';
+
+type WebpackExternals = Configuration['externals'];
+type ExternalItemFunction = Extract<
+  WebpackExternals,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (data: any, callback: any) => void
+>;
+type ExternalItemFunctionParams = Parameters<ExternalItemFunction>;
+type ExternalItemFunctionData = ExternalItemFunctionParams[0];
+type OrigExternalItemCallback = ExternalItemFunctionParams[1];
+type ExternalItemCallbackParams = Concat<
+  Parameters<NonNullable<OrigExternalItemCallback>>,
+  ['promise']
+>;
+type ExternalItemCallback = (...args: ExternalItemCallbackParams) => void;
+type SingleWebpackExternal = Exclude<WebpackExternals, Array<unknown>>;
 
 export interface IsolatedExternalsElement {
   [key: string]: ExternalInfo;
@@ -35,6 +52,62 @@ const configSchema: JSONSchema7 = {
     },
   },
 };
+
+const getExistingExternal = (
+  existingExternals: WebpackExternals,
+  data: ExternalItemFunctionData
+): SingleWebpackExternal | undefined => {
+  if (!existingExternals) {
+    return;
+  }
+
+  if (typeof existingExternals === 'function') {
+    return existingExternals;
+  }
+
+  if (Array.isArray(existingExternals)) {
+    return existingExternals.find((external) =>
+      getExistingExternal(external, data)
+    );
+  }
+
+  if (existingExternals instanceof RegExp) {
+    return existingExternals;
+  }
+
+  if (typeof existingExternals === 'object') {
+    const theExternal = existingExternals[data.request || ''];
+    if (theExternal) return existingExternals;
+  }
+
+  if (typeof existingExternals === 'string') {
+    if (existingExternals === data.request) {
+      return existingExternals;
+    }
+  }
+};
+
+function callExistingExternal(
+  existingExternal: SingleWebpackExternal,
+  data: ExternalItemFunctionData,
+  callback: NonNullable<OrigExternalItemCallback>
+): void | Promise<unknown> {
+  if (typeof existingExternal === 'function') {
+    return existingExternal(data, callback);
+  }
+
+  if (existingExternal instanceof RegExp) {
+    return callback(undefined, existingExternal);
+  }
+
+  if (typeof existingExternal === 'object') {
+    return callback(undefined, existingExternal[data.request || '']);
+  }
+
+  if (typeof existingExternal === 'string') {
+    return callback(undefined, existingExternal);
+  }
+}
 
 export default class IsolatedExternalsPlugin {
   readonly moduleDir: string;
@@ -71,7 +144,8 @@ export default class IsolatedExternalsPlugin {
                   ext.globalName ||
                   (existingExternals as Record<string, string | undefined>)[
                     packageName
-                  ],
+                  ] ||
+                  packageName,
               },
             }),
             {}
@@ -90,25 +164,40 @@ export default class IsolatedExternalsPlugin {
       );
 
       const setupExternals = () => {
-        compiler.options.externalsType = 'promise';
-        compiler.options.externals = {
-          ...(typeof existingExternals === 'string'
+        let existingExternals = compiler.options.externals || {};
+        existingExternals =
+          typeof existingExternals === 'string'
             ? { [existingExternals]: existingExternals }
-            : existingExternals),
-          ...Object.entries(allIsolatedExternals).reduce<
-            Record<string, string>
-          >(
-            (exts, [externalName, { globalName }]) => ({
-              ...exts,
-              ...(!globalName
-                ? {}
-                : {
-                    [externalName]: `__webpack_modules__["${EXTERNALS_MODULE_NAME}"]["${globalName}"]`,
-                  }),
-            }),
-            {}
-          ),
-        };
+            : existingExternals;
+        existingExternals = Array.isArray(existingExternals)
+          ? existingExternals
+          : [existingExternals];
+
+        compiler.options.externals = [
+          (data: ExternalItemFunctionData, callback) => {
+            const { request } = data;
+            if (!request) return callback();
+
+            const externalInfo = allIsolatedExternals[request];
+            if (!externalInfo || !externalInfo.globalName) {
+              const matchedExternal = getExistingExternal(
+                existingExternals,
+                data
+              );
+              if (matchedExternal) {
+                return callExistingExternal(matchedExternal, data, callback);
+              }
+
+              return callback();
+            }
+
+            ((callback as unknown) as ExternalItemCallback)(
+              undefined,
+              `__webpack_modules__["${EXTERNALS_MODULE_NAME}"]["${externalInfo.globalName}"]`,
+              'promise'
+            );
+          },
+        ];
       };
 
       const setupRules = () => {
