@@ -122,36 +122,38 @@ export default class IsolatedExternalsPlugin {
         ? normalizedExistingExternals
         : [normalizedExistingExternals as NonNullable<unknown>];
 
-      const setupRules = () => {
-        compiler.options.module.rules = [
-          ...compiler.options.module.rules,
-          ...Object.entries(finalIsolatedExternals)
-            // We want the longest names last so the most specific ones are matched first
-            // module rules are processed in reverse order
-            // https://webpack.js.org/concepts/loaders/#configuration
-            .sort(function reverseNameLength([entryNameA], [entryNameB]) {
-              return entryNameA.length > entryNameB.length ? 1 : -1;
-            })
-            .map(([entryName, externals]) => ({
-              test: /isolatedExternalsModule.js/,
-              resourceQuery: new RegExp(`${entryName}$`),
-              use: [
-                {
-                  loader: path.resolve(
-                    path.join(this.moduleDir, 'isolatedExternalsLoader.js')
-                  ),
-                  options: externals,
-                },
-              ],
-            })),
-        ];
-      };
+      compiler.options.module.rules = [
+        ...compiler.options.module.rules,
+        ...Object.entries(finalIsolatedExternals)
+          // We want the longest names last so the most specific ones are matched first
+          // module rules are processed in reverse order
+          // https://webpack.js.org/concepts/loaders/#configuration
+          .sort(function reverseNameLength([entryNameA], [entryNameB]) {
+            return entryNameA.length > entryNameB.length ? 1 : -1;
+          })
+          .map(([entryName, externals]) => ({
+            test: /isolatedExternalsModule.js/,
+            resourceQuery: new RegExp(`${entryName}$`),
+            use: [
+              {
+                loader: path.resolve(
+                  path.join(this.moduleDir, 'isolatedExternalsLoader.js')
+                ),
+                options: externals,
+              },
+            ],
+          })),
+      ];
+    });
 
-      const setupEntries = () => {
+    compiler.hooks.entryOption.tap(
+      'IsolatedExternalsPlugin',
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      (context, entry) => {
         const isolatedModulePath = path.resolve(this.externalsModuleLocation);
 
-        const originalEntry = compiler.options.entry;
-        type NormalizedEntries = typeof originalEntry extends infer U
+        type NormalizedEntries = typeof entry extends infer U
           ? U extends () => unknown
             ? never
             : U
@@ -181,12 +183,9 @@ export default class IsolatedExternalsPlugin {
             }),
             {}
           );
-        compiler.options.entry = { ...originalEntry, ...isolatedEntries };
-      };
-
-      setupRules();
-      setupEntries();
-    });
+        Object.assign(entry, isolatedEntries);
+      }
+    );
 
     compiler.hooks.normalModuleFactory.tap('IsolatedExternalsPlugin', (nmf) => {
       nmf.hooks.factorize.tapAsync('IsolatedExternalsPlugin', (data, cb) => {
