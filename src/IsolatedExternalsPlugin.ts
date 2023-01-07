@@ -75,44 +75,48 @@ export default class IsolatedExternalsPlugin {
   }
 
   apply(compiler: Compiler): void {
+    const isolatedExternals = Object.entries(this.config);
     let existingExternals: WebpackExternals;
     let normalizedExistingExternals: WebpackExternals = {};
-    const isolatedExternals = Object.entries(this.config);
-    const finalIsolatedExternals = isolatedExternals.reduce<FinalIsolatedExternals>(
-      (finalExternals, [entryName, exts]) => {
-        const finalExts = Object.entries(
-          exts
-        ).reduce<FinalIsolatedExternalsElement>(
-          (allExts, [packageName, ext]) => ({
-            ...allExts,
-            [packageName]: {
-              ...ext,
-              globalName:
-                ext.globalName ||
-                (normalizedExistingExternals as Record<
-                  string,
-                  string | undefined
-                >)[packageName] ||
-                packageName,
-            },
-          }),
-          {}
-        );
-        return { ...finalExternals, [entryName]: finalExts };
-      },
-      {}
-    );
-    const entryExternals = Object.values(finalIsolatedExternals);
-    const allIsolatedExternals = entryExternals.reduce<Externals>(
-      (finalExternals, externalConfig) => ({
-        ...finalExternals,
-        ...externalConfig,
-      }),
-      {} as Externals
-    );
+    let finalIsolatedExternals: FinalIsolatedExternals;
+    let entryExternals: FinalIsolatedExternalsElement[];
+    let allIsolatedExternals: Externals;
 
     compiler.hooks.afterEnvironment.tap('IsolatedExternalsPlugin', () => {
       existingExternals = compiler.options.externals;
+      finalIsolatedExternals = isolatedExternals.reduce<FinalIsolatedExternals>(
+        (finalExternals, [entryName, exts]) => {
+          const finalExts = Object.entries(
+            exts
+          ).reduce<FinalIsolatedExternalsElement>(
+            (allExts, [packageName, ext]) => ({
+              ...allExts,
+              [packageName]: {
+                ...ext,
+                globalName:
+                  ext.globalName ||
+                  (normalizedExistingExternals as Record<
+                    string,
+                    string | undefined
+                  >)[packageName] ||
+                  packageName,
+              },
+            }),
+            {}
+          );
+          return { ...finalExternals, [entryName]: finalExts };
+        },
+        {}
+      );
+      entryExternals = Object.values(finalIsolatedExternals);
+      allIsolatedExternals = entryExternals.reduce<Externals>(
+        (finalExternals, externalConfig) => ({
+          ...finalExternals,
+          ...externalConfig,
+        }),
+        {} as Externals
+      );
+
       normalizedExistingExternals = existingExternals || {};
       normalizedExistingExternals =
         typeof normalizedExistingExternals === 'string'
