@@ -2,6 +2,7 @@ import {
   Configuration,
   Compiler,
   ExternalModule,
+  ExternalsPlugin,
   dependencies,
   NormalModule,
 } from 'webpack';
@@ -20,6 +21,20 @@ type ModuleDependency = typeof OrigModuleDependency;
 type Maybe<T> = T | undefined | null;
 
 type WebpackExternals = Configuration['externals'];
+type CompileCallback = Parameters<Compiler['hooks']['compile']['tap']>[1];
+type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
+type ExternalsCompileCallback = (
+  opts: WithRequired<
+    Partial<Parameters<CompileCallback>[0]>,
+    'normalModuleFactory'
+  >
+) => ReturnType<CompileCallback>;
+type NormalModuleFactory = Parameters<
+  Parameters<Compiler['hooks']['normalModuleFactory']['tap']>[1]
+>[0];
+type FactorizeCallback = Parameters<
+  NormalModuleFactory['hooks']['factorize']['tapAsync']
+>[1];
 
 export interface IsolatedExternalsElement {
   [key: string]: ExternalInfo;
@@ -58,6 +73,69 @@ const configSchema: JSONSchema7 = {
   },
 };
 
+// eslint-disable-next-line @typescript-eslint/ban-types
+const createGetProxy = <T extends object, R extends NonNullable<T[keyof T]>>(
+  orig: T,
+  get: (target: T, key: NonNullable<keyof T>) => Maybe<R>
+): T => {
+  return new Proxy(({} as unknown) as T, {
+    get: (target, key, ...args): R =>
+      get(target, key as NonNullable<keyof T>) ||
+      (Reflect.get(orig, key, ...args) as R),
+  });
+};
+
+const getPassthroughCompiler = (
+  compiler: Compiler,
+  normalModuleFactory: NormalModuleFactory,
+  factorizeAsyncMock: (cb: FactorizeCallback) => void
+): Compiler => {
+  const nmfFactorizeProxy = createGetProxy(
+    normalModuleFactory.hooks.factorize,
+    (target, key) => {
+      if (key === 'tapAsync') {
+        return (name: string, cb: FactorizeCallback) => factorizeAsyncMock(cb);
+      }
+    }
+  );
+
+  const nmfHooksProxy = createGetProxy(
+    normalModuleFactory.hooks,
+    (target, key) => {
+      if (key === 'factorize') {
+        return nmfFactorizeProxy;
+      }
+    }
+  );
+
+  const nmfProxy = createGetProxy(normalModuleFactory, (target, key) => {
+    if (key === 'hooks') {
+      return nmfHooksProxy;
+    }
+  });
+
+  const compileProxy = createGetProxy(compiler.hooks.compile, (target, key) => {
+    if (key === 'tap') {
+      return (((name: string, fn: ExternalsCompileCallback) => {
+        return fn({ normalModuleFactory: nmfProxy });
+      }) as unknown) as CompileCallback;
+    }
+  });
+  const compilerHooksProxy = createGetProxy(compiler.hooks, (target, key) => {
+    if (key === 'compile') {
+      return compileProxy;
+    }
+  });
+
+  const stubbedCompiler = createGetProxy(compiler, (target, key) => {
+    if (key === 'hooks') {
+      return compilerHooksProxy;
+    }
+  });
+
+  return stubbedCompiler;
+};
+
 export default class IsolatedExternalsPlugin {
   readonly moduleDir: string;
   constructor(
@@ -81,6 +159,7 @@ export default class IsolatedExternalsPlugin {
     let finalIsolatedExternals: FinalIsolatedExternals;
     let entryExternals: FinalIsolatedExternalsElement[];
     let allIsolatedExternals: Externals;
+    let originalExternalsPlugin: ExternalsPlugin;
 
     compiler.hooks.afterEnvironment.tap('IsolatedExternalsPlugin', () => {
       existingExternals = compiler.options.externals;
@@ -116,6 +195,12 @@ export default class IsolatedExternalsPlugin {
         }),
         {} as Externals
       );
+
+      originalExternalsPlugin = new ExternalsPlugin(
+        compiler.options.externalsType,
+        existingExternals
+      );
+      compiler.options.externals = {};
 
       normalizedExistingExternals = existingExternals || {};
       normalizedExistingExternals =
@@ -193,7 +278,17 @@ export default class IsolatedExternalsPlugin {
 
     compiler.hooks.normalModuleFactory.tap('IsolatedExternalsPlugin', (nmf) => {
       nmf.hooks.factorize.tapAsync('IsolatedExternalsPlugin', (data, cb) => {
-        if (!allIsolatedExternals[data.request]) return cb();
+        const callOriginalExternalsPlugin = () =>
+          originalExternalsPlugin.apply(
+            getPassthroughCompiler(compiler, nmf, (originalFactorize) =>
+              originalFactorize(data, cb)
+            )
+          );
+
+        if (!allIsolatedExternals[data.request]) {
+          callOriginalExternalsPlugin();
+          return;
+        }
 
         type DependencyModule = ModuleDependency &
           NormalModule & {
@@ -221,12 +316,14 @@ export default class IsolatedExternalsPlugin {
           )
           .find(Boolean);
         if (!targetEntry) {
-          return cb();
+          callOriginalExternalsPlugin();
+          return;
         }
 
         const targetExternal =
           finalIsolatedExternals[targetEntry]?.[data.request];
         if (!targetExternal) {
+          callOriginalExternalsPlugin();
           return cb();
         }
 
