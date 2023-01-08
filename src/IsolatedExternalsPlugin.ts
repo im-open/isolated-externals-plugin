@@ -7,13 +7,14 @@ import {
 } from 'webpack';
 import { validate } from 'schema-utils';
 import { JSONSchema7 } from 'schema-utils/declarations/validate';
+import path from 'path';
 
 import {
   Externals,
   ExternalInfo,
   EXTERNALS_MODULE_NAME,
 } from './util/externalsClasses';
-import path from 'path';
+import { createGetProxy } from './util/proxy';
 
 type Maybe<T> = T | undefined | null;
 
@@ -68,18 +69,6 @@ const configSchema: JSONSchema7 = {
       },
     },
   },
-};
-
-// eslint-disable-next-line @typescript-eslint/ban-types
-const createGetProxy = <T extends object, R extends NonNullable<T[keyof T]>>(
-  orig: T,
-  get: (target: T, key: NonNullable<keyof T>) => Maybe<R>
-): T => {
-  return new Proxy(({} as unknown) as T, {
-    get: (target, key, ...args): R =>
-      get(target, key as NonNullable<keyof T>) ||
-      (Reflect.get(orig, key, ...args) as R),
-  });
 };
 
 const getPassthroughCompiler = (
