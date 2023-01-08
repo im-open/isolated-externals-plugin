@@ -3,7 +3,6 @@ import {
   Compiler,
   ExternalModule,
   ExternalsPlugin,
-  dependencies,
   NormalModule,
 } from 'webpack';
 import { validate } from 'schema-utils';
@@ -16,8 +15,6 @@ import {
 } from './util/externalsClasses';
 import path from 'path';
 
-const { ModuleDependency: OrigModuleDependency } = dependencies;
-type ModuleDependency = typeof OrigModuleDependency;
 type Maybe<T> = T | undefined | null;
 
 type WebpackExternals = Configuration['externals'];
@@ -296,11 +293,6 @@ export default class IsolatedExternalsPlugin {
               callOriginalExternalsPlugin();
               return;
             }
-
-            type DependencyModule = ModuleDependency &
-              NormalModule & {
-                _parentModule?: DependencyModule;
-              };
 
             const getEntryName = function (request: string) {
               const entryUrl = new URL('https://www.example.com/' + request);
