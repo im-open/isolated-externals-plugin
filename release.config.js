@@ -34,6 +34,10 @@ const extraPlugins = isMainBranch
     ]
   : [];
 
+const extraConfig = isMainBranch
+  ? {}
+  : { tagFormat: `v\${version}-${branchSha}` };
+
 module.exports = {
   repositoryUrl: 'git@github.com:WTW-IM/isolated-externals-plugin.git',
   branches: [
@@ -59,4 +63,5 @@ module.exports = {
     ...extraPlugins,
   ],
   preset: 'eslint',
+  ...extraConfig,
 };
