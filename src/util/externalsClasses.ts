@@ -1,6 +1,3 @@
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-export type CachedExternals = Record<string, CachedExternal>;
-
 export interface ExternalInfo {
   globalName?: string;
   url: string;
@@ -136,6 +133,7 @@ export class CachedExternal {
   failed: boolean;
   error?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   loaded: boolean;
+  private response: Response | undefined;
   private cachePromise?: Promise<CacheLike>;
   private retries: number;
   private readyListener?: () => void;
@@ -185,10 +183,10 @@ export class CachedExternal {
     await (await this.getCache()).put(this.url, new Response(content));
   }
 
-  waitForLoad(): Promise<void> {
+  waitForLoad(): Promise<Response | undefined> {
     return new Promise((res) => {
       const checkLoad = () => {
-        if (!this.loading) return res();
+        if (!this.loading) return res(this.response);
         window.requestAnimationFrame(checkLoad);
       };
       checkLoad();
@@ -216,8 +214,18 @@ export class CachedExternal {
 
   async loadResponse(): Promise<Response | undefined> {
     const cache = await this.getCache();
+    const cacheMatch = await cache.match(this.url);
+    if (cacheMatch) return cacheMatch;
+
     await cache.add(this.url);
-    return cache.match(this.url);
+    const response = await cache.match(this.url);
+
+    if (!response) return;
+
+    if (response.redirected) {
+      await cache.put(response.url, response.clone());
+    }
+    return response;
   }
 
   async load(): Promise<void> {
@@ -228,11 +236,10 @@ export class CachedExternal {
     await this.waitForReady();
 
     try {
-      const cache = await this.getCache();
-      const response =
-        (await cache.match(this.url)) || (await this.loadResponse());
+      const response = await this.loadResponse();
       this.failed = !response?.ok || response?.status >= 400;
       this.loaded = true;
+      this.response = response as Response;
     } catch (err) {
       /*
        * Chrome occasionally fails with a network error when attempting to cache
@@ -243,6 +250,7 @@ export class CachedExternal {
         this.retries += 1;
         return this.load();
       } else {
+        console.error(err);
         this.failed = true;
         this.error = err; // eslint-disable-line @typescript-eslint/no-unsafe-assignment
       }

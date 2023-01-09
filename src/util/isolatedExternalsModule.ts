@@ -1,31 +1,12 @@
-import {
-  CachedExternal,
-  Externals,
-  CachedExternals,
-  EXTERNALS_MODULE_NAME,
-} from './externalsClasses';
+import { Externals, EXTERNALS_MODULE_NAME } from './externalsClasses';
 import { processExternal } from './processExternals';
 import getValue from './getValue';
 import getGlobal from './getGlobal';
+import { getExternal } from './externalsCache';
 
 declare global {
   const ISOLATED_EXTERNALS_OBJECT: Externals;
   const __webpack_modules__: Record<string, unknown>;
-  interface Window {
-    __isolatedExternalsCacheV3: CachedExternals;
-  }
-}
-
-function getExternal(url: string): CachedExternal {
-  window.__isolatedExternalsCacheV3 = window.__isolatedExternalsCacheV3 || {};
-  return (
-    window.__isolatedExternalsCacheV3[url] ||
-    (() => {
-      const theExternal = new CachedExternal(url);
-      window.__isolatedExternalsCacheV3[url] = theExternal;
-      return theExternal;
-    })()
-  );
 }
 
 async function loadExternal(
