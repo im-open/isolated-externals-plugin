@@ -1,3 +1,23 @@
+# [2.1.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.0.0...v2.1.0) (2023-01-09)
+
+### Docs
+
+- updating docs with more externalsType.promise info ([271a26a](https://github.com/WTW-IM/isolated-externals-plugin/commit/271a26a9563c749b661486bbcb91969fd5f240e5))
+
+### Fix
+
+- optimizing entry lookup ([967a52f](https://github.com/WTW-IM/isolated-externals-plugin/commit/967a52f4987755cd732536a9f9a43d7cfeb06def))
+- separating proxy utils ([703b65f](https://github.com/WTW-IM/isolated-externals-plugin/commit/703b65f69e05078c6822c898deefa39a5e7c0d10))
+
+### Update
+
+- aligning better with existing externals ([1a50f59](https://github.com/WTW-IM/isolated-externals-plugin/commit/1a50f59e0b6d786019a89b4497c4fdf873a38eda))
+- not modifying existing externals ([0926302](https://github.com/WTW-IM/isolated-externals-plugin/commit/09263025bd241cf9c915ac535b5aaba7119d26cd))
+- preempting original Externals config ([caeeca5](https://github.com/WTW-IM/isolated-externals-plugin/commit/caeeca5b5111fd75ded3e8b60e21b414b723951d))
+- updating entries when they're created ([7654a7b](https://github.com/WTW-IM/isolated-externals-plugin/commit/7654a7b9f3f2e5140b6981d3e8445a1cf1e9257b))
+- updating externalsData in afterEnvironment ([ee5e344](https://github.com/WTW-IM/isolated-externals-plugin/commit/ee5e344ab2400c07d7b0dc8b1e2907c9a13a9102))
+- using compilation to check for entry ([be6ec40](https://github.com/WTW-IM/isolated-externals-plugin/commit/be6ec408966114b592f04d5137ea32ae286cf1f4))
+
 # [2.0.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v1.10.2...v2.0.0) (2022-12-08)
 
 ### Breaking
