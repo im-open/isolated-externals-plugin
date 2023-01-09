@@ -1,3 +1,13 @@
+# [2.2.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.1.0...v2.2.0) (2023-01-09)
+
+### Update
+
+- adding a redirected url to the cache as well as the request url ([a47d9b8](https://github.com/WTW-IM/isolated-externals-plugin/commit/a47d9b82dc3cab417e2aefbead6d92efdca05b7e))
+
+### Upgrade
+
+- Bump json5 from 2.2.1 to 2.2.3 ([3a20bca](https://github.com/WTW-IM/isolated-externals-plugin/commit/3a20bca058985e3364e76965b50489a6b5be66f7))
+
 # [2.1.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.0.0...v2.1.0) (2023-01-09)
 
 ### Docs
