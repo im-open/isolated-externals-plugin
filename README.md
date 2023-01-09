@@ -17,9 +17,13 @@ The `IsolatedExternalsPlugin` allows you to load external dependencies inside th
 
 It's an opinionated plugin in this way:
 
-- It forcibly sets [`externalsType` to `promise`](https://webpack.js.org/configuration/externals/#externalstypepromise) (but should still work with UMD-type externals)
+- The externals set with the `IsolatedExternalsPlugin` utilize [`externalsType.promise`](https://webpack.js.org/configuration/externals/#externalstypepromise), which utilizes `async`/`await` syntax.
 
 The plugin is built as an ES Module, so you'll need to load it in by using the `default` property:
+
+```javascript
+const IsolatedExternalsPlugin = require('isolated-externals-plugin').default;
+```
 
 An `IsolatedExternalsPlugin` configuration might look like the following:
 
