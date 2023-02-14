@@ -63,13 +63,18 @@ Each property of the configuration follows this structure:
 }
 ```
 
-| Part            | Description                                                                                                                                                                                                                                                                                     |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `entryName`\*   | The name of one of your webpack [Entry Points](https://webpack.js.org/concepts/entry-points/).                                                                                                                                                                                                  |
-| `packageName`\* | The name of the import for your externalized dependency (like 'react-dom').                                                                                                                                                                                                                     |
-| `url`\*         | The URL from which to load your dependency file.                                                                                                                                                                                                                                                |
-| `globalName`    | The UMD name of your dependency (like `ReactDOM`). If this is not provided, `IsolatedExternalsPlugin` will try to match the `packageName` to one of your [`externals`](https://webpack.js.org/configuration/externals/#externals) entries, and will use the value from that as the `globalName` |
-| \*              | _required_                                                                                                                                                                                                                                                                                      |
+| Part                    | Description                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `entryName`\*           | The name of one of your webpack [Entry Points](https://webpack.js.org/concepts/entry-points/).            |
+| `packageName`\*         | The name of the import for your externalized dependency (like 'react-dom').                               |
+| `url`\*                 | The URL from which to load your dependency file.                                                          |
+| `globalName`            | The UMD name of your dependency (like `ReactDOM`). [See below for details](#globalname-and-other-details) |
+| `globalUrlModifierFunc` | The name of a global function to pass your url through before loading.                                    |
+| \*                      | _required_                                                                                                |
+
+## `globalName` and other details
+
+If `globalName` is not provided, `IsolatedExternalsPlugin` will try to match the `packageName` to one of your [`externals`](https://webpack.js.org/configuration/externals/#externals) entries, and will use the value from that as the `globalName`
 
 The external files will be loaded and applied to your context in the order that they're listed, so if you have dependencies that depend on other dependencies (like `ReactDOM` depends on `React`), then you'll want to make sure you list the ones they depend on first.
 

@@ -1,6 +1,7 @@
 export interface ExternalInfo {
   globalName?: string;
   url: string;
+  globalUrlModifierFunc?: string;
 }
 
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */

@@ -20,6 +20,8 @@ async function loadExternal(
   return processingPromise;
 }
 
+type URLModifier = (url: string) => string;
+
 function createExternalsObject(
   externalsInfo: Externals
 ): Record<string, unknown> {
@@ -27,10 +29,18 @@ function createExternalsObject(
   const externalsContext = {} as Record<string, unknown>;
   const externalsObject = Object.entries(externalsInfo).reduce<
     Record<string, unknown>
-  >((extObj, [, { url, globalName }]) => {
+  >((extObj, [, { url, globalName, globalUrlModifierFunc }]) => {
     if (!globalName) return extObj;
 
-    const externalLoad = loadExternal(externalsContext, url, orderedDeps);
+    const targetGlobal = getGlobal();
+    const globalModifier = globalUrlModifierFunc
+      ? (targetGlobal[globalUrlModifierFunc] as URLModifier)
+      : (url: string) => url;
+    const externalLoad = loadExternal(
+      externalsContext,
+      globalModifier(url),
+      orderedDeps
+    );
     orderedDeps = [...orderedDeps, externalLoad];
     Object.defineProperty(extObj, globalName, {
       get: async (): Promise<unknown | undefined> => {
