@@ -1,11 +1,18 @@
-import { Externals, EXTERNALS_MODULE_NAME } from './externalsClasses';
+import {
+  ModuleExternals,
+  ModuleExternalInfo,
+  EXTERNALS_MODULE_NAME,
+} from './externalsClasses';
 import { processExternal } from './processExternals';
 import getValue from './getValue';
 import getGlobal from './getGlobal';
 import { getExternal } from './externalsCache';
 
+type URLModifier = (url: string) => string;
+
 declare global {
-  const ISOLATED_EXTERNALS_OBJECT: Externals;
+  const ISOLATED_EXTERNALS_OBJECT: ModuleExternals;
+  const URL_TRANSFORMER: URLModifier;
   const __webpack_modules__: Record<string, unknown>;
 }
 
@@ -20,39 +27,37 @@ async function loadExternal(
   return processingPromise;
 }
 
-type URLModifier = (url: string) => string;
-
 function createExternalsObject(
-  externalsInfo: Externals
+  externalsInfo: ModuleExternals
 ): Record<string, unknown> {
   let orderedDeps: Promise<unknown>[] = [];
   const externalsContext = {} as Record<string, unknown>;
-  const externalsObject = Object.entries(externalsInfo).reduce<
-    Record<string, unknown>
-  >((extObj, [, { url, globalName, globalUrlModifierFunc }]) => {
-    if (!globalName) return extObj;
+  const externalsObject = Object.values<ModuleExternalInfo>(
+    externalsInfo
+  ).reduce<Record<string, unknown>>(
+    (extObj, { url, globalName, urlTransformer }) => {
+      if (!globalName) return extObj;
 
-    const targetGlobal = getGlobal();
-    const globalModifier = globalUrlModifierFunc
-      ? (targetGlobal[globalUrlModifierFunc] as URLModifier)
-      : (url: string) => url;
-    const externalLoad = loadExternal(
-      externalsContext,
-      globalModifier(url),
-      orderedDeps
-    );
-    orderedDeps = [...orderedDeps, externalLoad];
-    Object.defineProperty(extObj, globalName, {
-      get: async (): Promise<unknown | undefined> => {
-        const foundContext = await externalLoad;
-        return (
-          getValue(globalName, foundContext) ||
-          getValue(globalName, getGlobal())
-        );
-      },
-    });
-    return extObj;
-  }, {});
+      const targetGlobal = getGlobal();
+      const externalLoad = loadExternal(
+        externalsContext,
+        urlTransformer(url),
+        orderedDeps
+      );
+      orderedDeps = [...orderedDeps, externalLoad];
+      Object.defineProperty(extObj, globalName, {
+        get: async (): Promise<unknown | undefined> => {
+          const foundContext = await externalLoad;
+          return (
+            getValue(globalName, foundContext) ||
+            getValue(globalName, targetGlobal)
+          );
+        },
+      });
+      return extObj;
+    },
+    {}
+  );
 
   const externalsGlobalProxy = new Proxy(externalsObject, {
     get: (target, prop): unknown => {

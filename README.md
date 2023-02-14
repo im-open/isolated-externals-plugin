@@ -63,14 +63,14 @@ Each property of the configuration follows this structure:
 }
 ```
 
-| Part                    | Description                                                                                               |
-| ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| `entryName`\*           | The name of one of your webpack [Entry Points](https://webpack.js.org/concepts/entry-points/).            |
-| `packageName`\*         | The name of the import for your externalized dependency (like 'react-dom').                               |
-| `url`\*                 | The URL from which to load your dependency file.                                                          |
-| `globalName`            | The UMD name of your dependency (like `ReactDOM`). [See below for details](#globalname-and-other-details) |
-| `globalUrlModifierFunc` | The name of a global function to pass your url through before loading.                                    |
-| \*                      | _required_                                                                                                |
+| Part             | Description                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| `entryName`\*    | The name of one of your webpack [Entry Points](https://webpack.js.org/concepts/entry-points/).            |
+| `packageName`\*  | The name of the import for your externalized dependency (like 'react-dom').                               |
+| `url`\*          | The URL from which to load your dependency file.                                                          |
+| `globalName`     | The UMD name of your dependency (like `ReactDOM`). [See below for details](#globalname-and-other-details) |
+| `urlTransformer` | A path or module path to a module that exports a url transforming function.                               |
+| \*               | _required_                                                                                                |
 
 ## `globalName` and other details
 
