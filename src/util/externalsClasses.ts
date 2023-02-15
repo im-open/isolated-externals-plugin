@@ -1,11 +1,19 @@
 export interface ExternalInfo {
   globalName?: string;
   url: string;
+  urlTransformer?: string;
 }
 
-/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 export interface Externals {
   [key: string]: ExternalInfo;
+}
+
+export type ModuleExternalInfo = Omit<ExternalInfo, 'urlTransformer'> & {
+  urlTransformer: (url: string) => string;
+};
+
+export interface ModuleExternals {
+  [key: string]: ModuleExternalInfo;
 }
 
 const isReady = (): boolean =>
