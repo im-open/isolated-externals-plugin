@@ -3,6 +3,14 @@ import { Externals, ExternalInfo } from './externalsClasses';
 
 const lastClosingCurly = /}([^}]*)$/;
 
+// copied from webpack
+const importDefault = `function(mod) {
+  return (mod && mod.__esModule) ? mod : {
+    "default": mod
+  };
+}`;
+const passThroughFunc = `function (x) { return x; }`;
+
 export default function (
   this: ThisParameterType<LoaderDefinitionFunction<Externals>>,
   source: string
@@ -13,9 +21,9 @@ export default function (
       const external = externals[key];
       const externalTransformer = external.urlTransformer;
       const urlTransformer = externalTransformer
-        ? `require('${externalTransformer}')`
-        : 'function (x) { return x; }';
-      const transformedExternal = Object.keys(external).reduce(
+        ? `(__importDefault || ${importDefault})(require('${externalTransformer}')).default`
+        : passThroughFunc;
+      const transformedExternal = Object.keys(external).reduce<ExternalInfo>(
         (modifiedExternal, key) =>
           key === 'urlTransformer'
             ? modifiedExternal
@@ -23,7 +31,7 @@ export default function (
                 ...modifiedExternal,
                 [key]: external[key] as ExternalInfo[keyof ExternalInfo],
               },
-        {}
+        { url: '' }
       );
       const stringExternal = JSON.stringify(transformedExternal, null, 2);
       const urlTransformerExternal = stringExternal.replace(
