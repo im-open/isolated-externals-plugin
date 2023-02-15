@@ -2,6 +2,7 @@ import { LoaderDefinitionFunction } from 'webpack';
 import { Externals, ExternalInfo } from './externalsClasses';
 
 const lastClosingCurly = /}([^}]*)$/;
+const passThroughFunc = `function (x) { return x; }`;
 
 export default function (
   this: ThisParameterType<LoaderDefinitionFunction<Externals>>,
@@ -13,8 +14,8 @@ export default function (
       const external = externals[key];
       const externalTransformer = external.urlTransformer;
       const urlTransformer = externalTransformer
-        ? `require('${externalTransformer}')`
-        : 'function (x) { return x; }';
+        ? `(__importDefault || ${passThroughFunc})(require('${externalTransformer})')`
+        : passThroughFunc;
       const transformedExternal = Object.keys(external).reduce(
         (modifiedExternal, key) =>
           key === 'urlTransformer'
