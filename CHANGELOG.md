@@ -1,3 +1,14 @@
+# [2.3.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.2.0...v2.3.0) (2023-02-15)
+
+### Fix
+
+- allowing default imports for url modifier ([c83fba1](https://github.com/WTW-IM/isolated-externals-plugin/commit/c83fba1e7053a50808ba34029167a1719ef161bf))
+
+### New
+
+- adding optional globalUrlModifierFunc ([704d429](https://github.com/WTW-IM/isolated-externals-plugin/commit/704d4297607628d40e44d8d3afa352c7e5deec56))
+- replacing global modifier with transformer path ([3cd931d](https://github.com/WTW-IM/isolated-externals-plugin/commit/3cd931d3c851be9d12aea8c3f35f9abf7d249146))
+
 # [2.2.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.1.0...v2.2.0) (2023-01-09)
 
 ### Update
