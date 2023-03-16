@@ -165,7 +165,11 @@ export class CachedExternal {
      * https://bugzilla.mozilla.org/show_bug.cgi?id=1724607
      */
     try {
-      this.cachePromise = window.caches.open(CACHE_NAME);
+      const staticCachePromise = new Promise<CacheLike>((res) => {
+        setTimeout(() => res(new StaticCache()), 100);
+      });
+      const openCachePromise = window.caches.open(CACHE_NAME);
+      this.cachePromise = Promise.race([staticCachePromise, openCachePromise]);
       return await this.cachePromise;
     } catch {
       const staticCache = new StaticCache();
