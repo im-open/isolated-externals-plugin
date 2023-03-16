@@ -1,3 +1,9 @@
+## [2.3.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.3.0...v2.3.1) (2023-03-16)
+
+### Fix
+
+- adding a cache.open timeout which returns StaticCache ([5d4b190](https://github.com/WTW-IM/isolated-externals-plugin/commit/5d4b1909d70c08f085e59cf7ecfd015d56f54911))
+
 # [2.3.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.2.0...v2.3.0) (2023-02-15)
 
 ### Fix
