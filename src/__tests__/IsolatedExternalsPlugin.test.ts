@@ -22,6 +22,9 @@ const externalsConfig = {
 };
 let runResult: webpack.Stats | undefined;
 let fileResult: string;
+jest.setTimeout(30000);
+
+execSync(`npm run build`);
 
 beforeAll((done) => {
   thePlugin = new IsolatedExternalsPlugin(
@@ -44,6 +47,9 @@ beforeAll((done) => {
       `cat ${path.join(__dirname, '../../dist/component.js')}`,
       { encoding: 'utf8' }
     );
+
+    if (runResult?.hasErrors()) console.error(runResult.toJson().errors);
+
     done();
   });
 });
@@ -63,4 +69,11 @@ test.each(
   expect(fileResult).toContain(packageName);
   expect(fileResult).toContain(url);
   expect(fileResult).toContain(globalName);
+});
+
+test.each([
+  ['React', /react.*\?unpromise-external&globalName=React/],
+  ['ReactDOM', /react-dom.*\?unpromise-external&globalName=ReactDOM/],
+])('fileResult contains unpromised externals: %s', (globalName, regex) => {
+  expect(fileResult).toMatch(regex);
 });

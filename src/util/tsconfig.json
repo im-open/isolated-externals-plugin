@@ -7,6 +7,6 @@
     "resolveJsonModule": false,
     "suppressImplicitAnyIndexErrors": true
   },
-  "include": ["./*.ts"],
+  "include": ["./*"],
   "exclude": []
 }

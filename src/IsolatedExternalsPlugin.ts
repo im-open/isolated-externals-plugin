@@ -4,6 +4,8 @@ import {
   ExternalModule,
   ExternalsPlugin,
   NormalModule,
+  dependencies,
+  Module,
 } from 'webpack';
 import { validate } from 'schema-utils';
 import { JSONSchema7 } from 'schema-utils/declarations/validate';
@@ -16,7 +18,7 @@ import {
 } from './util/externalsClasses';
 import { createGetProxy } from './util/proxy';
 
-type Maybe<T> = T | undefined | null;
+export type Maybe<T> = T | undefined | null;
 
 type WebpackExternals = Configuration['externals'];
 type CompileCallback = Parameters<Compiler['hooks']['compile']['tap']>[1];
@@ -218,6 +220,16 @@ export default class IsolatedExternalsPlugin {
               },
             ],
           })),
+        {
+          resourceQuery: /unpromise-external/,
+          use: [
+            {
+              loader: path.resolve(
+                path.join(this.moduleDir, 'unpromise-loader.js')
+              ),
+            },
+          ],
+        },
       ];
     });
 
@@ -266,6 +278,84 @@ export default class IsolatedExternalsPlugin {
       'IsolatedExternalsPlugin',
       (compilation, compilationParams) => {
         const { normalModuleFactory } = compilationParams;
+
+        const getRequestParam = function (request: string, param: string) {
+          const entryUrl = new URL('https://www.example.com/' + request);
+          const value = entryUrl.searchParams.get(param);
+          return value;
+        };
+
+        const getTargetEntry = (dep: Maybe<NormalModule>): Maybe<string> => {
+          if (!dep) {
+            return;
+          }
+          const { rawRequest = '' } = dep;
+
+          if (rawRequest) {
+            const entryName = getRequestParam(
+              rawRequest,
+              'isolatedExternalsEntry'
+            );
+            if (entryName) {
+              return entryName;
+            }
+          }
+
+          const connections = Array.from(
+            compilation.moduleGraph.getIncomingConnections(dep as Module)
+          );
+          return getTargetEntry(
+            connections.find(
+              (conn) =>
+                conn.originModule !== dep &&
+                getTargetEntry(conn.originModule as Maybe<NormalModule>)
+            )?.originModule as Maybe<NormalModule>
+          );
+        };
+
+        const getTargetEntryFromDeps = (
+          deps: Maybe<dependencies.ModuleDependency[]>
+        ) => {
+          const targetEntry = deps
+            ?.map<Maybe<string>>((dep) =>
+              getTargetEntry(
+                compilation.moduleGraph.getParentModule(
+                  dep
+                ) as Maybe<NormalModule>
+              )
+            )
+            .find(Boolean);
+
+          return targetEntry;
+        };
+
+        normalModuleFactory.hooks.beforeResolve.tapAsync(
+          'IsolatedExternalsPlugin',
+          (result, cb) => {
+            try {
+              const targetEntry = getTargetEntryFromDeps(result.dependencies);
+              if (!targetEntry) return cb();
+
+              if (result.dependencyType === 'esm') return cb();
+
+              const targetExternal =
+                finalIsolatedExternals[targetEntry]?.[result.request];
+              if (!targetExternal) return cb();
+
+              result.request = `${result.request}?unpromise-external&globalName=${targetExternal.globalName}`;
+
+              cb();
+            } catch (err) {
+              console.warn(
+                'error setting up unpromise-externals',
+                result.request
+              );
+              console.error(err);
+              throw err;
+            }
+          }
+        );
+
         normalModuleFactory.hooks.factorize.tapAsync(
           'IsolatedExternalsPlugin',
           (data, cb) => {
@@ -283,44 +373,7 @@ export default class IsolatedExternalsPlugin {
               return;
             }
 
-            const getEntryName = function (request: string) {
-              const entryUrl = new URL('https://www.example.com/' + request);
-              const entry = entryUrl.searchParams.get('isolatedExternalsEntry');
-              return entry;
-            };
-
-            const getTargetEntry = (
-              dep: Maybe<NormalModule>
-            ): Maybe<string> => {
-              if (!dep) {
-                return;
-              }
-              const { rawRequest = '' } = dep;
-
-              const entryName = getEntryName(rawRequest);
-              if (entryName) {
-                return entryName;
-              }
-
-              const connections = Array.from(
-                compilation.moduleGraph.getIncomingConnections(dep)
-              );
-              return getTargetEntry(
-                connections.find((conn) =>
-                  getTargetEntry(conn.originModule as Maybe<NormalModule>)
-                )?.originModule as Maybe<NormalModule>
-              );
-            };
-
-            const targetEntry = data.dependencies
-              ?.map<Maybe<string>>((dep) =>
-                getTargetEntry(
-                  compilation.moduleGraph.getParentModule(
-                    dep
-                  ) as Maybe<NormalModule>
-                )
-              )
-              .find(Boolean);
+            const targetEntry = getTargetEntryFromDeps(data.dependencies);
 
             if (!targetEntry) {
               callOriginalExternalsPlugin();
