@@ -29,7 +29,7 @@ export default function (
             ? modifiedExternal
             : {
                 ...modifiedExternal,
-                [key]: external[key] as ExternalInfo[keyof ExternalInfo],
+                [key]: external[key as keyof ExternalInfo],
               },
         { url: '' }
       );
