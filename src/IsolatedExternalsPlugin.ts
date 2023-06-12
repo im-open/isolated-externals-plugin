@@ -6,6 +6,8 @@ import {
   NormalModule,
   dependencies,
   Module,
+  EntryPlugin,
+  ResolveData,
 } from 'webpack';
 import { validate } from 'schema-utils';
 import { JSONSchema7 } from 'schema-utils/declarations/validate';
@@ -17,8 +19,9 @@ import {
   EXTERNALS_MODULE_NAME,
 } from './util/externalsClasses';
 import { createGetProxy } from './util/proxy';
+import getRequestParam from './util/getRequestParam';
 
-export type Maybe<T> = T | undefined | null;
+type Maybe<T> = T | undefined | null;
 
 type WebpackExternals = Configuration['externals'];
 type CompileCallback = Parameters<Compiler['hooks']['compile']['tap']>[1];
@@ -45,7 +48,7 @@ export interface IsolatedExternals {
 }
 
 interface FinalIsolatedExternalsElement {
-  [key: string]: ExternalInfo & {
+  [key: string]: Omit<ExternalInfo, 'globalName'> & {
     globalName: string;
   };
 }
@@ -208,18 +211,30 @@ export default class IsolatedExternalsPlugin {
           .sort(function reverseNameLength([entryNameA], [entryNameB]) {
             return entryNameA.length > entryNameB.length ? 1 : -1;
           })
-          .map(([entryName, externals]) => ({
-            test: /isolatedExternalsModule.js/,
-            resourceQuery: new RegExp(`${entryName}$`),
-            use: [
-              {
-                loader: path.resolve(
-                  path.join(this.moduleDir, 'isolatedExternalsLoader.js')
-                ),
-                options: externals,
-              },
-            ],
-          })),
+          .flatMap(([entryName, externals]) => [
+            {
+              test: /isolatedExternalsModule.js/,
+              resourceQuery: new RegExp(`${entryName}$`),
+              use: [
+                {
+                  loader: path.resolve(
+                    path.join(this.moduleDir, 'isolatedExternalsLoader.js')
+                  ),
+                  options: externals,
+                },
+              ],
+            },
+            {
+              resourceQuery: new RegExp(`isolatedExternalsEntry=${entryName}`),
+              use: [
+                {
+                  loader: path.resolve(
+                    path.join(this.moduleDir, 'unpromised-entry-loader.js')
+                  ),
+                },
+              ],
+            },
+          ]),
         {
           resourceQuery: /unpromise-external/,
           use: [
@@ -277,19 +292,22 @@ export default class IsolatedExternalsPlugin {
     compiler.hooks.thisCompilation.tap(
       'IsolatedExternalsPlugin',
       (compilation, compilationParams) => {
+        const logger = compilation.getLogger('IsolatedExternalsPlugin');
         const { normalModuleFactory } = compilationParams;
+        const unpromisedEntries: {
+          [key: string]: {
+            context: string;
+            deps: string[];
+          };
+        } = {};
 
-        const getRequestParam = function (request: string, param: string) {
-          const entryUrl = new URL('https://www.example.com/' + request);
-          const value = entryUrl.searchParams.get(param);
-          return value;
-        };
-
-        const getTargetEntry = (dep: Maybe<NormalModule>): Maybe<string> => {
+        const getTargetEntry = (
+          dep: Maybe<NormalModule>
+        ): Maybe<NormalModule> => {
           if (!dep) {
             return;
           }
-          const { rawRequest = '' } = dep;
+          const { rawRequest = '' } = dep || {};
 
           if (rawRequest) {
             const entryName = getRequestParam(
@@ -297,7 +315,7 @@ export default class IsolatedExternalsPlugin {
               'isolatedExternalsEntry'
             );
             if (entryName) {
-              return entryName;
+              return dep;
             }
           }
 
@@ -317,7 +335,7 @@ export default class IsolatedExternalsPlugin {
           deps: Maybe<dependencies.ModuleDependency[]>
         ) => {
           const targetEntry = deps
-            ?.map<Maybe<string>>((dep) =>
+            ?.map((dep) =>
               getTargetEntry(
                 compilation.moduleGraph.getParentModule(
                   dep
@@ -329,22 +347,138 @@ export default class IsolatedExternalsPlugin {
           return targetEntry;
         };
 
-        normalModuleFactory.hooks.beforeResolve.tapAsync(
-          'IsolatedExternalsPlugin',
-          (result, cb) => {
-            try {
-              const targetEntry = getTargetEntryFromDeps(result.dependencies);
-              if (!targetEntry) return cb();
+        function getEntryDepsRequest(entryName: string, request: string) {
+          if (!entryName) return request;
 
-              if (result.dependencyType === 'esm') return cb();
+          const { deps: unpromiseDeps } = unpromisedEntries[entryName] || {};
+          if (!unpromiseDeps) return request;
+
+          const newRequest = request.replace(
+            /(\?|&)unpromised-entry&deps=[^&]+/,
+            ''
+          );
+          const delimiter = newRequest.includes('?') ? '&' : '?';
+
+          const depRequest = `${newRequest}${delimiter}unpromised-entry&deps=${unpromiseDeps.join(
+            ','
+          )}`;
+          return depRequest;
+        }
+
+        function getEntryDep(entryName: string, request: string) {
+          if (!entryName) return;
+
+          const depRequest = getEntryDepsRequest(entryName, request);
+          const entry = compilation.entries.get(entryName);
+          if (!entry) return;
+
+          if (!unpromisedEntries[entryName]) {
+            return;
+          }
+
+          const newEntryDep = EntryPlugin.createDependency(
+            depRequest,
+            entry.options || entryName
+          );
+          return newEntryDep;
+        }
+
+        async function rebuildEntryModule(entryName: string) {
+          const rebuilding = new Promise<void>((resolve, reject) => {
+            const entry = compilation.entries.get(entryName);
+            if (!entry) {
+              logger.info('no entry', entryName);
+              return resolve();
+            }
+            const entryDep = (entry.dependencies as dependencies.ModuleDependency[]).find(
+              (dep) =>
+                getRequestParam(dep.request, 'isolatedExternalsEntry') ===
+                entryName
+            );
+            if (!entryDep) {
+              logger.info('no entry dependency', entryName);
+              return resolve();
+            }
+
+            if (
+              entryDep.request ===
+              getEntryDepsRequest(entryName, entryDep.request)
+            ) {
+              logger.info('no need to rebuild entry module', entryDep.request);
+              return resolve();
+            }
+
+            const newEntryDep = getEntryDep(entryName, entryDep.request);
+            if (!newEntryDep) {
+              logger.info('no new entry module', entryName, entryDep.request);
+              return resolve();
+            }
+            logger.info('replacing entry module', entryName);
+            entry.dependencies = entry.dependencies.filter(
+              (dep) => dep !== entryDep
+            );
+
+            const { context } = unpromisedEntries[entryName] || {};
+            compilation.addEntry(context, newEntryDep, entryName, (err) => {
+              if (err) return reject(err);
+              resolve();
+            });
+          });
+          await rebuilding;
+        }
+
+        function getTargetEntryNameFromResult(
+          result: ResolveData | Module,
+          existingTargetEntry?: NormalModule
+        ) {
+          const targetEntry =
+            existingTargetEntry ??
+            getTargetEntryFromDeps(
+              result.dependencies as Maybe<dependencies.ModuleDependency[]>
+            );
+          if (!targetEntry) return '';
+
+          const entryName =
+            getRequestParam(
+              targetEntry.userRequest,
+              'isolatedExternalsEntry'
+            ) || '';
+          return entryName;
+        }
+
+        normalModuleFactory.hooks.beforeResolve.tapPromise(
+          'IsolatedExternalsPlugin',
+          async (result) => {
+            try {
+              if (result.dependencyType === 'esm') return;
+
+              const targetEntry = getTargetEntryFromDeps(result.dependencies);
+              if (!targetEntry) return;
+
+              const entryName = getTargetEntryNameFromResult(
+                result,
+                targetEntry
+              );
 
               const targetExternal =
-                finalIsolatedExternals[targetEntry]?.[result.request];
-              if (!targetExternal) return cb();
+                finalIsolatedExternals[entryName]?.[result.request];
+              if (!targetExternal) return;
 
-              result.request = `${result.request}?unpromise-external&globalName=${targetExternal.globalName}`;
+              const req = result.request.endsWith('/')
+                ? result.request + 'index'
+                : result.request;
 
-              cb();
+              result.request = `${req}?unpromise-external&globalName=${targetExternal.globalName}`;
+              unpromisedEntries[entryName] = {
+                context: targetEntry.context || '',
+                deps: [
+                  ...new Set([
+                    ...(unpromisedEntries[entryName]?.deps || []),
+                    targetExternal.globalName,
+                  ]),
+                ],
+              };
+              await rebuildEntryModule(entryName);
             } catch (err) {
               console.warn(
                 'error setting up unpromise-externals',
@@ -380,8 +514,13 @@ export default class IsolatedExternalsPlugin {
               return;
             }
 
+            const entryName =
+              getRequestParam(
+                targetEntry.userRequest,
+                'isolatedExternalsEntry'
+              ) || '';
             const targetExternal =
-              finalIsolatedExternals[targetEntry]?.[data.request];
+              finalIsolatedExternals[entryName]?.[data.request];
             if (!targetExternal) {
               callOriginalExternalsPlugin();
               return cb();

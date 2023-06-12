@@ -1,20 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { LoaderDefinitionFunction } from 'webpack';
-import { EXTERNALS_MODULE_NAME } from './externalsClasses';
-
-const getRequestParam = function (request: string, param: string) {
-  const entryUrl = new URL('https://www.example.com/' + request);
-  const value = entryUrl.searchParams.get(param);
-  return value;
-};
+import { SYNCED_EXTERNALS_MODULE_NAME } from './externalsClasses';
+import getRequestParam from './getRequestParam';
 
 type IsolatedLoaderFunc = LoaderDefinitionFunction<unknown>;
 type LoaderThis = ThisParameterType<IsolatedLoaderFunc>;
 type Source = Parameters<IsolatedLoaderFunc>[0];
 
-const syncedExternalJs = fs.readFileSync(
-  require.resolve(path.join(__dirname, 'syncedExternal.js')),
+const syncedExternalText = fs.readFileSync(
+  require.resolve(path.join(__dirname, 'unpromisedExternal.js')),
   'utf8'
 );
 
@@ -23,17 +18,15 @@ export default function unpromiseLoader(
   source: Source
 ): string {
   try {
-    const globalNameResource = /globalName=([^&]+)/.exec(
-      this.resourceQuery
-    )?.[0];
-    if (!globalNameResource) return source;
-    const globalName = globalNameResource.split('=')[1];
-
+    const globalName = getRequestParam(this.resourceQuery, 'globalName');
     if (!globalName) return source;
 
-    const thePromise = `__webpack_modules__[${EXTERNALS_MODULE_NAME}][${globalName}]`;
-
-    return syncedExternalJs.replaceAll('THE_PROMISE', thePromise);
+    return syncedExternalText
+      .replace(
+        /SYNCED_EXTERNALS_MODULE_NAME/g,
+        `"${SYNCED_EXTERNALS_MODULE_NAME}"`
+      )
+      .replace(/THE_GLOBAL/g, `"${globalName}"`);
   } catch (e) {
     console.error(`failure to load module for ${this.request}`, e);
     throw e;
