@@ -272,4 +272,5 @@ export class CachedExternal {
   }
 }
 
-export const EXTERNALS_MODULE_NAME = 'externalsModule';
+export const EXTERNALS_MODULE_NAME = 'externalsModule' as const;
+export const SYNCED_EXTERNALS_MODULE_NAME = 'syncedExternals' as const;
