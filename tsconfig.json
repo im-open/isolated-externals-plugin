@@ -8,13 +8,13 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "lib": ["DOM", "ESNext"],
-    "module": "commonjs",
+    "module": "node16",
     "moduleResolution": "node",
     "outDir": "./dist",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "es5"
+    "target": "es2017"
   },
   "include": ["src"],
   "exclude": ["src/util", "**/**/__tests__", "src/testing-support"]

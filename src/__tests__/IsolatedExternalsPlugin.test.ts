@@ -2,6 +2,7 @@ import path from 'path';
 import webpack from 'webpack';
 import IsolatedExternalsPlugin from '../IsolatedExternalsPlugin';
 import { execSync } from 'child_process';
+import { SYNCED_EXTERNALS_MODULE_NAME } from '../util/externalsClasses';
 
 let thePlugin: IsolatedExternalsPlugin;
 let webpackOptions: webpack.Configuration;
@@ -22,7 +23,7 @@ const externalsConfig = {
 };
 let runResult: webpack.Stats | undefined;
 let fileResult: string;
-jest.setTimeout(30000);
+jest.setTimeout(20000);
 
 execSync(`npm run build`);
 
@@ -76,4 +77,16 @@ test.each([
   ['ReactDOM', /react-dom.*\?unpromise-external&globalName=ReactDOM/],
 ])('fileResult contains unpromised externals: %s', (globalName, regex) => {
   expect(fileResult).toMatch(regex);
+  expect(fileResult).toContain(
+    `["${SYNCED_EXTERNALS_MODULE_NAME}"]["${globalName}"]`
+  );
+});
+
+it('should have an unpromised-entry', () => {
+  expect(fileResult).toContain('unpromised-entry');
+});
+
+it('should not have placeholders', () => {
+  expect(fileResult).not.toContain('DEPS_PLACEHOLDER');
+  expect(fileResult).not.toContain('RELOAD_PLACEHOLDER');
 });
