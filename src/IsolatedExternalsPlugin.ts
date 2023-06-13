@@ -299,10 +299,7 @@ export default class IsolatedExternalsPlugin {
         const logger = compilation.getLogger('IsolatedExternalsPlugin');
         const { normalModuleFactory } = compilationParams;
         const unpromisedEntries: {
-          [key: string]: {
-            context: string;
-            deps: string[];
-          };
+          [key: string]: string[];
         } = {};
 
         const getTargetEntry = (
@@ -370,7 +367,7 @@ export default class IsolatedExternalsPlugin {
         ) {
           if (!entryName) return request;
 
-          const { deps: unpromiseDeps } = unpromisedEntries[entryName] || {};
+          const unpromiseDeps = unpromisedEntries[entryName] || [];
           if (!unpromiseDeps) return request;
 
           const originalRequest =
@@ -417,7 +414,7 @@ export default class IsolatedExternalsPlugin {
           const rebuilding = new Promise<void>((resolve, reject) => {
             const entry = compilation.entries.get(entryName);
             if (!entry) {
-              console.warn('no entry', entryName);
+              logger.debug('no entry', entryName);
               return resolve();
             }
             const entryDep = (entry.dependencies as dependencies.ModuleDependency[]).find(
@@ -427,7 +424,7 @@ export default class IsolatedExternalsPlugin {
                 entryName
             );
             if (!entryDep) {
-              console.warn('no entry dependency', entryName);
+              logger.debug('no entry dependency', entryName);
               return resolve();
             }
 
@@ -438,16 +435,16 @@ export default class IsolatedExternalsPlugin {
             );
 
             if (entryDep.request === newEntryRequest) {
-              console.warn('no need to rebuild entry module', entryDep.request);
+              logger.debug('no need to rebuild entry module', entryDep.request);
               return resolve();
             }
 
             const newEntryDep = getEntryDep(entryName, newEntryRequest);
             if (!newEntryDep) {
-              console.warn('no new entry module', entryName, entryDep.request);
+              logger.debug('no new entry module', entryName, entryDep.request);
               return resolve();
             }
-            console.warn('replacing entry module', { entryName, newEntryDep });
+            logger.debug('replacing entry module', { entryName, newEntryDep });
             entry.dependencies = entry.dependencies.filter(
               (dep) => dep !== entryDep
             );
@@ -493,8 +490,9 @@ export default class IsolatedExternalsPlugin {
                 targetEntry
               );
 
-              const targetExternal =
-                finalIsolatedExternals[entryName]?.[result.request];
+              const externalsBlock = finalIsolatedExternals[entryName];
+              const externalName = result.request;
+              const targetExternal = externalsBlock?.[externalName];
               if (!targetExternal) return;
 
               const req = result.request.endsWith('/')
@@ -502,15 +500,20 @@ export default class IsolatedExternalsPlugin {
                 : result.request;
 
               result.request = `${req}?unpromise-external&globalName=${targetExternal.globalName}`;
-              unpromisedEntries[entryName] = {
-                context: targetEntry.context || '',
-                deps: [
-                  ...new Set([
-                    ...(unpromisedEntries[entryName]?.deps || []),
-                    targetExternal.globalName,
-                  ]),
-                ],
-              };
+
+              const externalsReqs = Object.entries(externalsBlock);
+              const previousExternals = externalsReqs.slice(
+                0,
+                externalsReqs.findIndex(([key]) => key === externalName)
+              );
+
+              unpromisedEntries[entryName] = [
+                ...new Set([
+                  ...(unpromisedEntries[entryName] || []),
+                  ...previousExternals.map(([, { globalName }]) => globalName),
+                  targetExternal.globalName,
+                ]),
+              ];
               await rebuildEntryModule(entryName);
             } catch (err) {
               console.warn(

@@ -28,7 +28,7 @@ export default function unpromiseLoader(
     const normal =
       getRequestParam(this.resourceQuery, 'normal') == true.toString();
     const logger = this.getLogger('unpromised-entry-loader');
-    console.warn('unpromised-entry-loader', {
+    logger.debug('unpromised-entry-loader', {
       deps,
       originalRequest,
       normal,
