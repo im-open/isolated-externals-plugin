@@ -131,7 +131,8 @@ export default class IsolatedExternalsPlugin {
   readonly moduleDir: string;
   constructor(
     readonly config: IsolatedExternals = {},
-    readonly externalsModuleLocation: string
+    readonly externalsModuleLocation: string = '',
+    readonly unpromisedEntryModuleLocation: string = ''
   ) {
     validate(configSchema, config, {
       name: 'IsolatedExternalsPlugin',
@@ -140,6 +141,9 @@ export default class IsolatedExternalsPlugin {
     this.externalsModuleLocation =
       externalsModuleLocation ||
       path.join(__dirname, 'util', 'isolatedExternalsModule.js');
+    this.unpromisedEntryModuleLocation =
+      unpromisedEntryModuleLocation ||
+      path.join(__dirname, 'util', 'unpromisedEntry.js');
     this.moduleDir = path.dirname(this.externalsModuleLocation);
   }
 
@@ -225,7 +229,7 @@ export default class IsolatedExternalsPlugin {
               ],
             },
             {
-              resourceQuery: new RegExp(`isolatedExternalsEntry=${entryName}`),
+              resourceQuery: /unpromised-entry/,
               use: [
                 {
                   loader: path.resolve(
@@ -347,28 +351,54 @@ export default class IsolatedExternalsPlugin {
           return targetEntry;
         };
 
-        function getEntryDepsRequest(entryName: string, request: string) {
+        function updateRequestWithParam(
+          request: string,
+          paramName: string,
+          paramValue: string
+        ) {
+          const param = `${paramName}=${encodeURIComponent(paramValue)}`;
+          const parmRegex = new RegExp(`[?&]${paramName}=[^&]+`);
+          const newRequest = request.replace(parmRegex, '');
+          const delimiter = newRequest.includes('?') ? '&' : '?';
+          return `${request}${delimiter}${param}`;
+        }
+
+        function getEntryDepsRequest(
+          entryName: string,
+          request: string,
+          replacedRequest: string
+        ) {
           if (!entryName) return request;
 
           const { deps: unpromiseDeps } = unpromisedEntries[entryName] || {};
           if (!unpromiseDeps) return request;
 
-          const newRequest = request.replace(
-            /(\?|&)unpromised-entry&deps=[^&]+/,
-            ''
-          );
-          const delimiter = newRequest.includes('?') ? '&' : '?';
+          const originalRequest =
+            getRequestParam(replacedRequest, 'originalRequest') ||
+            replacedRequest;
 
-          const depRequest = `${newRequest}${delimiter}unpromised-entry&deps=${unpromiseDeps.join(
-            ','
-          )}`;
+          let depRequest = updateRequestWithParam(
+            request,
+            'originalRequest',
+            originalRequest
+          );
+          depRequest = updateRequestWithParam(
+            depRequest,
+            'unpromised-entry',
+            entryName
+          );
+          depRequest = updateRequestWithParam(
+            depRequest,
+            'deps',
+            unpromiseDeps.join(',')
+          );
+
           return depRequest;
         }
 
         function getEntryDep(entryName: string, request: string) {
           if (!entryName) return;
 
-          const depRequest = getEntryDepsRequest(entryName, request);
           const entry = compilation.entries.get(entryName);
           if (!entry) return;
 
@@ -377,55 +407,58 @@ export default class IsolatedExternalsPlugin {
           }
 
           const newEntryDep = EntryPlugin.createDependency(
-            depRequest,
+            request,
             entry.options || entryName
           );
           return newEntryDep;
         }
 
-        async function rebuildEntryModule(entryName: string) {
+        const rebuildEntryModule = async (entryName: string) => {
           const rebuilding = new Promise<void>((resolve, reject) => {
             const entry = compilation.entries.get(entryName);
             if (!entry) {
-              logger.info('no entry', entryName);
+              console.warn('no entry', entryName);
               return resolve();
             }
             const entryDep = (entry.dependencies as dependencies.ModuleDependency[]).find(
               (dep) =>
-                getRequestParam(dep.request, 'isolatedExternalsEntry') ===
+                (getRequestParam(dep.request, 'isolatedExternalsEntry') ||
+                  getRequestParam(dep.request, 'unpromised-entry')) ===
                 entryName
             );
             if (!entryDep) {
-              logger.info('no entry dependency', entryName);
+              console.warn('no entry dependency', entryName);
               return resolve();
             }
 
-            if (
-              entryDep.request ===
-              getEntryDepsRequest(entryName, entryDep.request)
-            ) {
-              logger.info('no need to rebuild entry module', entryDep.request);
+            const newEntryRequest = getEntryDepsRequest(
+              entryName,
+              this.unpromisedEntryModuleLocation,
+              entryDep.request
+            );
+
+            if (entryDep.request === newEntryRequest) {
+              console.warn('no need to rebuild entry module', entryDep.request);
               return resolve();
             }
 
-            const newEntryDep = getEntryDep(entryName, entryDep.request);
+            const newEntryDep = getEntryDep(entryName, newEntryRequest);
             if (!newEntryDep) {
-              logger.info('no new entry module', entryName, entryDep.request);
+              console.warn('no new entry module', entryName, entryDep.request);
               return resolve();
             }
-            logger.info('replacing entry module', entryName);
+            console.warn('replacing entry module', { entryName, newEntryDep });
             entry.dependencies = entry.dependencies.filter(
               (dep) => dep !== entryDep
             );
 
-            const { context } = unpromisedEntries[entryName] || {};
-            compilation.addEntry(context, newEntryDep, entryName, (err) => {
+            compilation.addEntry('', newEntryDep, entryName, (err) => {
               if (err) return reject(err);
               resolve();
             });
           });
           await rebuilding;
-        }
+        };
 
         function getTargetEntryNameFromResult(
           result: ResolveData | Module,
@@ -450,7 +483,7 @@ export default class IsolatedExternalsPlugin {
           'IsolatedExternalsPlugin',
           async (result) => {
             try {
-              if (result.dependencyType === 'esm') return;
+              if (result.dependencyType === 'esm') return; // the bug does not happen in esm
 
               const targetEntry = getTargetEntryFromDeps(result.dependencies);
               if (!targetEntry) return;
@@ -541,6 +574,7 @@ export default class IsolatedExternalsPlugin {
 
     compiler.hooks.compilation.tap('IsolatedExternalsPlugin', (compilation) => {
       compilation.fileDependencies.add(this.externalsModuleLocation);
+      compilation.fileDependencies.add(this.unpromisedEntryModuleLocation);
     });
   }
 }

@@ -22,18 +22,29 @@ export default function unpromiseLoader(
 ): string {
   try {
     const deps = getRequestParam(this.resourceQuery, 'deps');
+    const originalRequest = decodeURIComponent(
+      getRequestParam(this.resourceQuery, 'originalRequest') || ''
+    );
     const normal =
       getRequestParam(this.resourceQuery, 'normal') == true.toString();
     const logger = this.getLogger('unpromised-entry-loader');
-    logger.info(this.resource);
+    console.warn('unpromised-entry-loader', {
+      deps,
+      originalRequest,
+      normal,
+      resource: this.resource,
+    });
 
     if (!deps || normal) return source;
 
-    const delimiter = this.resource.includes('?') ? '&' : '?';
+    const delimiter = originalRequest.includes('?') ? '&' : '?';
 
     return syncedEntryText
       .replace(/DEPS_PLACEHOLDER/g, deps)
-      .replace(/RELOAD_PLACEHOLDER/g, `${this.resource}${delimiter}normal=true`)
+      .replace(
+        /RELOAD_PLACEHOLDER/g,
+        `${originalRequest}${delimiter}normal=true`
+      )
       .replace(
         /SYNCED_EXTERNALS_MODULE_NAME/g,
         `"${SYNCED_EXTERNALS_MODULE_NAME}"`
