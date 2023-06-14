@@ -48,14 +48,13 @@ export default function unpromiseLoader(
           )
         : originalRequest;
 
+    const safeRequest = resolvedRequest.replace(/\\/g, '\\\\');
+
     const delimiter = resolvedRequest.includes('?') ? '&' : '?';
 
     const result = syncedEntryText
       .replace(/DEPS_PLACEHOLDER/g, deps)
-      .replace(
-        /RELOAD_PLACEHOLDER/g,
-        `${resolvedRequest}${delimiter}normal=true`
-      )
+      .replace(/RELOAD_PLACEHOLDER/g, `${safeRequest}${delimiter}normal=true`)
       .replace(
         /SYNCED_EXTERNALS_MODULE_NAME/g,
         `"${SYNCED_EXTERNALS_MODULE_NAME}"`
