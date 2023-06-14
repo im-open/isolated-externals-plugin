@@ -45,19 +45,18 @@ export default async function unpromiseLoader(
     const resolvedRequest =
       originalRequest && originalContext
         ? await this.getResolve({ resolveToContext: true })(
-            originalContext,
-            originalRequest
+            path.normalize(originalContext),
+            path.normalize(originalRequest)
           )
         : originalRequest;
+
+    const jsRequest = resolvedRequest.split(path.sep).join(path.posix.sep);
 
     const delimiter = resolvedRequest.includes('?') ? '&' : '?';
 
     const result = syncedEntryText
       .replace(/DEPS_PLACEHOLDER/g, deps)
-      .replace(
-        /RELOAD_PLACEHOLDER/g,
-        `${resolvedRequest}${delimiter}normal=true`
-      )
+      .replace(/RELOAD_PLACEHOLDER/g, `${jsRequest}${delimiter}normal=true`)
       .replace(
         /SYNCED_EXTERNALS_MODULE_NAME/g,
         `"${SYNCED_EXTERNALS_MODULE_NAME}"`
