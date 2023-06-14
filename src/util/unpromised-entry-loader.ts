@@ -25,6 +25,9 @@ export default function unpromiseLoader(
     const originalRequest = decodeURIComponent(
       getRequestParam(this.resourceQuery, 'originalRequest') || ''
     );
+    const originalContext = decodeURIComponent(
+      getRequestParam(this.resourceQuery, 'originalContext') || ''
+    );
     const normal =
       getRequestParam(this.resourceQuery, 'normal') == true.toString();
     const logger = this.getLogger('unpromised-entry-loader');
@@ -37,19 +40,29 @@ export default function unpromiseLoader(
 
     if (!deps || normal) return source;
 
-    const delimiter = originalRequest.includes('?') ? '&' : '?';
+    const resolvedRequest =
+      originalRequest && originalContext
+        ? path.resolve(
+            path.normalize(originalContext),
+            path.normalize(originalRequest)
+          )
+        : originalRequest;
 
-    return syncedEntryText
+    const safeRequest = resolvedRequest.replace(/\\/g, '\\\\');
+
+    const delimiter = resolvedRequest.includes('?') ? '&' : '?';
+
+    const result = syncedEntryText
       .replace(/DEPS_PLACEHOLDER/g, deps)
-      .replace(
-        /RELOAD_PLACEHOLDER/g,
-        `${originalRequest}${delimiter}normal=true`
-      )
+      .replace(/RELOAD_PLACEHOLDER/g, `${safeRequest}${delimiter}normal=true`)
       .replace(
         /SYNCED_EXTERNALS_MODULE_NAME/g,
         `"${SYNCED_EXTERNALS_MODULE_NAME}"`
       )
       .replace(/EXTERNALS_MODULE_NAME/g, `"${EXTERNALS_MODULE_NAME}"`);
+
+    return result;
+    this.callback(undefined, result);
   } catch (e) {
     console.error(`failure to load module for ${this.request}`, e);
     throw e;
