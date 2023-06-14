@@ -440,8 +440,9 @@ export default class IsolatedExternalsPlugin {
               entryName,
               this.unpromisedEntryModuleLocation,
               entryDep.request,
-              entryDep.getContext() ||
-                (/^\./.test(entryDep.request) ? process.cwd() : '')
+              /^\./.test(entryDep.request)
+                ? entryDep.getContext() || process.cwd()
+                : ''
             );
 
             if (entryDep.request === newEntryRequest) {
