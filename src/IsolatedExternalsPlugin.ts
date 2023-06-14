@@ -215,30 +215,28 @@ export default class IsolatedExternalsPlugin {
           .sort(function reverseNameLength([entryNameA], [entryNameB]) {
             return entryNameA.length > entryNameB.length ? 1 : -1;
           })
-          .flatMap(([entryName, externals]) => [
+          .map(([entryName, externals]) => ({
+            test: /isolatedExternalsModule.js/,
+            resourceQuery: new RegExp(`${entryName}$`),
+            use: [
+              {
+                loader: path.resolve(
+                  path.join(this.moduleDir, 'isolatedExternalsLoader.js')
+                ),
+                options: externals,
+              },
+            ],
+          })),
+        {
+          resourceQuery: /unpromised-entry/,
+          use: [
             {
-              test: /isolatedExternalsModule.js/,
-              resourceQuery: new RegExp(`${entryName}$`),
-              use: [
-                {
-                  loader: path.resolve(
-                    path.join(this.moduleDir, 'isolatedExternalsLoader.js')
-                  ),
-                  options: externals,
-                },
-              ],
+              loader: path.resolve(
+                path.join(this.moduleDir, 'unpromised-entry-loader.js')
+              ),
             },
-            {
-              resourceQuery: /unpromised-entry/,
-              use: [
-                {
-                  loader: path.resolve(
-                    path.join(this.moduleDir, 'unpromised-entry-loader.js')
-                  ),
-                },
-              ],
-            },
-          ]),
+          ],
+        },
         {
           resourceQuery: /unpromise-external/,
           use: [
@@ -363,7 +361,8 @@ export default class IsolatedExternalsPlugin {
         function getEntryDepsRequest(
           entryName: string,
           request: string,
-          replacedRequest: string
+          replacedRequest: string,
+          replacedContext: string
         ) {
           if (!entryName) return request;
 
@@ -374,10 +373,19 @@ export default class IsolatedExternalsPlugin {
             getRequestParam(replacedRequest, 'originalRequest') ||
             replacedRequest;
 
+          const originalContext =
+            getRequestParam(replacedRequest, 'originalContext') ||
+            replacedContext;
+
           let depRequest = updateRequestWithParam(
             request,
             'originalRequest',
             originalRequest
+          );
+          depRequest = updateRequestWithParam(
+            depRequest,
+            'originalContext',
+            originalContext
           );
           depRequest = updateRequestWithParam(
             depRequest,
@@ -431,7 +439,8 @@ export default class IsolatedExternalsPlugin {
             const newEntryRequest = getEntryDepsRequest(
               entryName,
               this.unpromisedEntryModuleLocation,
-              entryDep.request
+              entryDep.request,
+              entryDep.getContext() || ''
             );
 
             if (entryDep.request === newEntryRequest) {

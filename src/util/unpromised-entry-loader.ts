@@ -16,14 +16,19 @@ const syncedEntryText = fs.readFileSync(
   'utf8'
 );
 
-export default function unpromiseLoader(
+export default async function unpromiseLoader(
   this: LoaderThis,
   source: Source
-): string {
+): Promise<void> {
+  this.async();
+
   try {
     const deps = getRequestParam(this.resourceQuery, 'deps');
     const originalRequest = decodeURIComponent(
       getRequestParam(this.resourceQuery, 'originalRequest') || ''
+    );
+    const originalContext = decodeURIComponent(
+      getRequestParam(this.resourceQuery, 'originalContext') || ''
     );
     const normal =
       getRequestParam(this.resourceQuery, 'normal') == true.toString();
@@ -35,23 +40,33 @@ export default function unpromiseLoader(
       resource: this.resource,
     });
 
-    if (!deps || normal) return source;
+    if (!deps || normal) return this.callback(undefined, source);
 
-    const delimiter = originalRequest.includes('?') ? '&' : '?';
+    const resolvedRequest =
+      originalRequest && originalContext
+        ? await this.getResolve({ resolveToContext: true })(
+            originalContext,
+            originalRequest
+          )
+        : originalRequest;
 
-    return syncedEntryText
+    const delimiter = resolvedRequest.includes('?') ? '&' : '?';
+
+    const result = syncedEntryText
       .replace(/DEPS_PLACEHOLDER/g, deps)
       .replace(
         /RELOAD_PLACEHOLDER/g,
-        `${originalRequest}${delimiter}normal=true`
+        `${resolvedRequest}${delimiter}normal=true`
       )
       .replace(
         /SYNCED_EXTERNALS_MODULE_NAME/g,
         `"${SYNCED_EXTERNALS_MODULE_NAME}"`
       )
       .replace(/EXTERNALS_MODULE_NAME/g, `"${EXTERNALS_MODULE_NAME}"`);
+
+    this.callback(undefined, result);
   } catch (e) {
     console.error(`failure to load module for ${this.request}`, e);
-    throw e;
+    this.callback(e as Error);
   }
 }
