@@ -16,12 +16,10 @@ const syncedEntryText = fs.readFileSync(
   'utf8'
 );
 
-export default async function unpromiseLoader(
+export default function unpromiseLoader(
   this: LoaderThis,
   source: Source
-): Promise<void> {
-  this.async();
-
+): string {
   try {
     const deps = getRequestParam(this.resourceQuery, 'deps');
     const originalRequest = decodeURIComponent(
@@ -40,32 +38,34 @@ export default async function unpromiseLoader(
       resource: this.resource,
     });
 
-    if (!deps || normal) return this.callback(undefined, source);
+    if (!deps || normal) return source;
 
     const resolvedRequest =
       originalRequest && originalContext
-        ? await this.getResolve({ resolveToContext: true })(
+        ? path.resolve(
             path.normalize(originalContext),
             path.normalize(originalRequest)
           )
         : originalRequest;
 
-    const jsRequest = resolvedRequest.split(path.sep).join(path.posix.sep);
-
     const delimiter = resolvedRequest.includes('?') ? '&' : '?';
 
     const result = syncedEntryText
       .replace(/DEPS_PLACEHOLDER/g, deps)
-      .replace(/RELOAD_PLACEHOLDER/g, `${jsRequest}${delimiter}normal=true`)
+      .replace(
+        /RELOAD_PLACEHOLDER/g,
+        `${resolvedRequest}${delimiter}normal=true`
+      )
       .replace(
         /SYNCED_EXTERNALS_MODULE_NAME/g,
         `"${SYNCED_EXTERNALS_MODULE_NAME}"`
       )
       .replace(/EXTERNALS_MODULE_NAME/g, `"${EXTERNALS_MODULE_NAME}"`);
 
+    return result;
     this.callback(undefined, result);
   } catch (e) {
     console.error(`failure to load module for ${this.request}`, e);
-    this.callback(e as Error);
+    throw e;
   }
 }
