@@ -23,8 +23,11 @@ const externalsConfig = {
 };
 let runResult: webpack.Stats | undefined;
 let fileResult: string;
+jest.setTimeout(20000);
 
-execSync(`npm run build`);
+execSync(`npm run build`, {
+  stdio: 'inherit',
+});
 
 beforeAll((done) => {
   thePlugin = new IsolatedExternalsPlugin(
