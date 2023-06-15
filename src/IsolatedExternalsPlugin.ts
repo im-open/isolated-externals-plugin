@@ -8,6 +8,7 @@ import {
   Module,
   EntryPlugin,
   ResolveData,
+  Dependency,
 } from 'webpack';
 import { validate } from 'schema-utils';
 import { JSONSchema7 } from 'schema-utils/declarations/validate';
@@ -23,6 +24,7 @@ import getRequestParam from './util/getRequestParam';
 
 type Maybe<T> = T | undefined | null;
 
+type ModuleDependency = dependencies.ModuleDependency;
 type WebpackExternals = Configuration['externals'];
 type CompileCallback = Parameters<Compiler['hooks']['compile']['tap']>[1];
 type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
@@ -330,9 +332,7 @@ export default class IsolatedExternalsPlugin {
           );
         };
 
-        const getTargetEntryFromDeps = (
-          deps: Maybe<dependencies.ModuleDependency[]>
-        ) => {
+        const getTargetEntryFromDeps = (deps: Maybe<ModuleDependency[]>) => {
           const targetEntry = deps
             ?.map((dep) =>
               getTargetEntry(
@@ -425,7 +425,7 @@ export default class IsolatedExternalsPlugin {
               logger.debug('no entry', entryName);
               return resolve();
             }
-            const entryDep = (entry.dependencies as dependencies.ModuleDependency[]).find(
+            const entryDep = (entry.dependencies as ModuleDependency[]).find(
               (dep) =>
                 (getRequestParam(dep.request, 'isolatedExternalsEntry') ||
                   getRequestParam(dep.request, 'unpromised-entry')) ===
@@ -475,7 +475,7 @@ export default class IsolatedExternalsPlugin {
           const targetEntry =
             existingTargetEntry ??
             getTargetEntryFromDeps(
-              result.dependencies as Maybe<dependencies.ModuleDependency[]>
+              result.dependencies as Maybe<ModuleDependency[]>
             );
           if (!targetEntry) return '';
 
@@ -487,10 +487,28 @@ export default class IsolatedExternalsPlugin {
           return entryName;
         }
 
+        const doRebuildEntryModule = async (
+          result: ResolveData
+        ): Promise<boolean> => {
+          const entryName = getRequestParam(
+            result.request,
+            'isolatedExternalsEntry'
+          );
+          const isNormal =
+            getRequestParam(result.request, 'normal') === true.toString();
+
+          if (!entryName || isNormal || !unpromisedEntries[entryName])
+            return false;
+
+          await rebuildEntryModule(entryName);
+          return true;
+        };
+
         normalModuleFactory.hooks.beforeResolve.tapPromise(
           'IsolatedExternalsPlugin',
           async (result) => {
             try {
+              if (await doRebuildEntryModule(result)) return;
               if (result.dependencyType === 'esm') return; // the bug does not happen in esm
 
               const targetEntry = getTargetEntryFromDeps(result.dependencies);
