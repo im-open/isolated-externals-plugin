@@ -8,7 +8,6 @@ import {
   Module,
   EntryPlugin,
   ResolveData,
-  Dependency,
 } from 'webpack';
 import { validate } from 'schema-utils';
 import { JSONSchema7 } from 'schema-utils/declarations/validate';
@@ -487,30 +486,73 @@ export default class IsolatedExternalsPlugin {
           return entryName;
         }
 
-        const doRebuildEntryModule = async (
+        const getExternalsBlockForResult = (
+          result: ResolveData,
+          knownEntryName?: string
+        ) => {
+          if (knownEntryName) return finalIsolatedExternals[knownEntryName];
+
+          const targetEntry = getTargetEntryFromDeps(result.dependencies);
+          if (!targetEntry) return;
+
+          const entryName = getTargetEntryNameFromResult(result, targetEntry);
+
+          const externalsBlock = finalIsolatedExternals[entryName];
+          return externalsBlock;
+        };
+
+        const getParents = (
+          dep: ModuleDependency | NormalModule,
+          parents: Module[] = []
+        ): Module[] => {
+          let parent: NormalModule | undefined = dep as NormalModule;
+          if (dep.constructor.name.includes('Dependency')) {
+            parent = compilation.moduleGraph.getParentModule(
+              dep as ModuleDependency
+            ) as NormalModule;
+            if (parent?.request === dep.request) parent = undefined;
+          }
+
+          if (!parent) {
+            return parents;
+          }
+
+          const moduleParents = [
+            ...compilation.moduleGraph.getIncomingConnections(parent),
+          ]
+            .filter((mod) => mod.originModule !== parent)
+            .map((mod) => mod.originModule as NormalModule)
+            .filter(Boolean);
+
+          const newParents = [
+            parent,
+            ...moduleParents.flatMap((mod) => getParents(mod, parents)),
+          ];
+          return newParents;
+        };
+
+        const parentsHaveNonEsmDep = (
+          parents: Module[],
           result: ResolveData
-        ): Promise<boolean> => {
-          const entryName = getRequestParam(
-            result.request,
-            'isolatedExternalsEntry'
-          );
-          const isNormal =
-            getRequestParam(result.request, 'normal') === true.toString();
-
-          if (!entryName || isNormal || !unpromisedEntries[entryName])
-            return false;
-
-          await rebuildEntryModule(entryName);
-          return true;
+        ) => {
+          let previousChildReq = result.request;
+          const hasNonEsmParent =
+            result.dependencyType !== 'esm' ||
+            parents.some((parent) => {
+              const targetChild = parent.dependencies.find(
+                (dep) => (dep as ModuleDependency).request === previousChildReq
+              );
+              const { category } = (targetChild || {}) as ModuleDependency;
+              previousChildReq = (parent as NormalModule).request;
+              return !['esm', 'self'].includes(category || '');
+            });
+          return hasNonEsmParent;
         };
 
         normalModuleFactory.hooks.beforeResolve.tapPromise(
           'IsolatedExternalsPlugin',
           async (result) => {
             try {
-              if (await doRebuildEntryModule(result)) return;
-              if (result.dependencyType === 'esm') return; // the bug does not happen in esm
-
               const targetEntry = getTargetEntryFromDeps(result.dependencies);
               if (!targetEntry) return;
 
@@ -519,16 +561,32 @@ export default class IsolatedExternalsPlugin {
                 targetEntry
               );
 
-              const externalsBlock = finalIsolatedExternals[entryName];
+              const externalsBlock = getExternalsBlockForResult(
+                result,
+                entryName
+              );
               const externalName = result.request;
               const targetExternal = externalsBlock?.[externalName];
               if (!targetExternal) return;
+
+              const parents = getParents(result.dependencies[0]);
+              const hasNonEsmParent = parentsHaveNonEsmDep(parents, result);
+              if (!hasNonEsmParent) return;
+
+              logger.debug(
+                'unpromising entry',
+                entryName,
+                'for external',
+                result.request
+              );
 
               const req = result.request.endsWith('/')
                 ? result.request + 'index'
                 : result.request;
 
-              result.request = `${req}?unpromise-external&globalName=${targetExternal.globalName}`;
+              const newRequest = `${req}?unpromise-external&globalName=${targetExternal.globalName}`;
+
+              result.request = newRequest;
 
               const externalsReqs = Object.entries(externalsBlock);
               const previousExternals = externalsReqs.slice(
@@ -545,11 +603,11 @@ export default class IsolatedExternalsPlugin {
               ];
               await rebuildEntryModule(entryName);
             } catch (err) {
-              console.warn(
+              logger.warn(
                 'error setting up unpromise-externals',
                 result.request
               );
-              console.error(err);
+              logger.error(err);
               throw err;
             }
           }
