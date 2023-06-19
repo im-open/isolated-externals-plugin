@@ -1,11 +1,9 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
     "isolatedModules": false,
     "outDir": "../../dist/util",
-    "resolveJsonModule": false,
-    "suppressImplicitAnyIndexErrors": true
+    "target": "es5"
   },
   "include": ["./*.ts"],
   "exclude": []

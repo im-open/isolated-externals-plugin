@@ -2,6 +2,7 @@ import path from 'path';
 import webpack from 'webpack';
 import IsolatedExternalsPlugin from '../IsolatedExternalsPlugin';
 import { execSync } from 'child_process';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
 
 let thePlugin: IsolatedExternalsPlugin;
 let webpackOptions: webpack.Configuration;
@@ -22,13 +23,19 @@ const externalsConfig = {
 };
 let runResult: webpack.Stats | undefined;
 let fileResult: string;
+jest.setTimeout(20000);
+
+execSync(`npm run build`, {
+  stdio: 'inherit',
+});
 
 beforeAll((done) => {
   thePlugin = new IsolatedExternalsPlugin(
     {
       component: externalsConfig,
     },
-    path.join(__dirname, '../../dist/util/isolatedExternalsModule.js')
+    path.join(__dirname, '../../dist/util/isolatedExternalsModule.js'),
+    path.join(__dirname, '../../dist/util/unpromisedEntry.js')
   );
   webpackOptions = {
     mode: 'development',
@@ -36,7 +43,17 @@ beforeAll((done) => {
       component: path.resolve(__dirname, '..', 'testing-support', 'fakeApp.js'),
     },
     devtool: 'source-map',
-    plugins: [thePlugin],
+    plugins: [
+      thePlugin,
+      new HtmlWebpackPlugin({
+        template: path.resolve(
+          __dirname,
+          '..',
+          'testing-support',
+          'index.html'
+        ),
+      }),
+    ],
   };
   webpack(webpackOptions, (err, result) => {
     runResult = result;
@@ -44,6 +61,9 @@ beforeAll((done) => {
       `cat ${path.join(__dirname, '../../dist/component.js')}`,
       { encoding: 'utf8' }
     );
+
+    if (runResult?.hasErrors()) console.error(runResult.toJson().errors);
+
     done();
   });
 });
@@ -63,4 +83,21 @@ test.each(
   expect(fileResult).toContain(packageName);
   expect(fileResult).toContain(url);
   expect(fileResult).toContain(globalName);
+});
+
+test.each([
+  ['React', /react.*\?unpromise-external&globalName=React/],
+  ['ReactDOM', /react-dom.*\?unpromise-external&globalName=ReactDOM/],
+])('fileResult contains unpromised externals: %s', (globalName, regex) => {
+  expect(fileResult).toMatch(regex);
+  expect(fileResult).toContain(`syncedModulesProxy["${globalName}"]`);
+});
+
+it('should have an unpromised-entry', () => {
+  expect(fileResult).toContain('unpromised-entry');
+});
+
+it('should not have placeholders', () => {
+  expect(fileResult).not.toContain('DEPS_PLACEHOLDER');
+  expect(fileResult).not.toContain('RELOAD_PLACEHOLDER');
 });
