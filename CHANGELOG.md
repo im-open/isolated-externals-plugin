@@ -1,3 +1,23 @@
+# [2.4.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.3.1...v2.4.0) (2023-06-19)
+
+### Fix
+
+- ensuring we load entries via their context or cwd only if relative path ([1b02a5a](https://github.com/WTW-IM/isolated-externals-plugin/commit/1b02a5ad508932602071a43f271f0df4f522d825))
+
+### New
+
+- initial pass at unpromised externals working around webpack/webpack#16544 ([5400977](https://github.com/WTW-IM/isolated-externals-plugin/commit/540097788b981aac345274f6409b6c3c07194b73)), closes [webpack/webpack#16544](https://github.com/webpack/webpack/issues/16544)
+
+### Update
+
+- ensuring we always correctly unpromise externals ([6bb8f88](https://github.com/WTW-IM/isolated-externals-plugin/commit/6bb8f88a7edba897940cb4bc18326a40b3392e83))
+- ensuring we don't use normal externals over isolated ones ([6dd33ee](https://github.com/WTW-IM/isolated-externals-plugin/commit/6dd33eefe511fb60c2e7dc56cc8a5a47edc4f3c6))
+- externalizing deps with non-esm parents ([63594bc](https://github.com/WTW-IM/isolated-externals-plugin/commit/63594bc4e92c73d37ad682a89b9ee6b92f7106e0))
+- only recursing parents list once per dependency ([3f1388c](https://github.com/WTW-IM/isolated-externals-plugin/commit/3f1388c12260bfe4542f106d2388efa0fb449d74))
+- rebuilding entries on module rebuild ([edbda1c](https://github.com/WTW-IM/isolated-externals-plugin/commit/edbda1c300c5da5f8cf130b4e2fa02e333788ac7))
+- replacing entries to force waiting for unpromised-externals ([009f186](https://github.com/WTW-IM/isolated-externals-plugin/commit/009f18648e42f49a5b54a3426c26db7b00873648))
+- using all previous externals in unpromise-entry ([7761a39](https://github.com/WTW-IM/isolated-externals-plugin/commit/7761a3966879bc201a7db8671361f943e4847a9c))
+
 ## [2.3.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.3.0...v2.3.1) (2023-03-16)
 
 ### Fix
