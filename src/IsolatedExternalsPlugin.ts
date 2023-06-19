@@ -311,13 +311,13 @@ export default class IsolatedExternalsPlugin {
       const getParentModule = (result: ResolveData) =>
         compilation.moduleGraph.getParentModule(result.dependencies[0]);
 
-      const getTargetEntry = (
+      const getTargetEntries = (
         dependency: Maybe<Module>,
         parents?: Maybe<Module>[]
-      ): Maybe<NormalModule> => {
+      ): string[] => {
         const dep = dependency as Maybe<NormalModule>;
         if (!dep) {
-          return;
+          return [];
         }
         const { rawRequest = '' } = dep || {};
 
@@ -326,20 +326,13 @@ export default class IsolatedExternalsPlugin {
             getRequestParam(rawRequest, 'isolatedExternalsEntry') ||
             getRequestParam(rawRequest, 'unpromised-entry');
           if (entryName) {
-            return dep;
+            return [entryName];
           }
         }
 
-        const connections =
-          parents ||
-          Array.from(compilation.moduleGraph.getIncomingConnections(dep)).map(
-            (conn) => conn?.originModule as Maybe<NormalModule>
-          );
-        let targetEntry: Maybe<NormalModule>;
-        connections
-          .filter((conn) => conn && conn.identifier() !== dep.identifier())
-          .find((conn) => (targetEntry = getTargetEntry(conn)));
-        return targetEntry;
+        const connections = parents || getAllParents(dep);
+        const entries = connections.flatMap((conn) => getTargetEntries(conn));
+        return [...new Set(entries)];
       };
 
       function updateRequestWithParam(
@@ -354,16 +347,15 @@ export default class IsolatedExternalsPlugin {
         return `${request}${delimiter}${param}`;
       }
 
-      function getEntryDepsRequest(
+      const getEntryDepsRequest = (
         entryName: string,
         request: string,
         replacedRequest: string,
-        replacedContext: string,
-        existingEntries: UnpromisedEntries
-      ) {
+        replacedContext: string
+      ) => {
         if (!entryName) return request;
 
-        const unpromiseDeps = existingEntries[entryName] || [];
+        const unpromiseDeps = this.unpromisedEntries[entryName];
         if (!unpromiseDeps) return request;
 
         const originalRequest =
@@ -396,7 +388,7 @@ export default class IsolatedExternalsPlugin {
         );
 
         return depRequest;
-      }
+      };
 
       function getEntryDep(entryName: string, request: string) {
         if (!entryName) return;
@@ -411,38 +403,36 @@ export default class IsolatedExternalsPlugin {
         return newEntryDep;
       }
 
-      function getTargetEntryNameFromResult(
-        result: ResolveData | Module,
-        existingTargetEntry?: NormalModule
-      ) {
-        const targetEntry =
-          existingTargetEntry ??
-          getTargetEntry(
-            (result as Module).type
-              ? (result as Module)
-              : getParentModule(result as ResolveData)
-          );
-        if (!targetEntry) return '';
-
-        const entryName =
-          getRequestParam(targetEntry.userRequest, 'isolatedExternalsEntry') ||
-          '';
-        return entryName;
-      }
-
       const setsEqual = <T>(setA: Set<T>, setB: Set<T>): boolean =>
         setA.size === setB.size && [...setA].every((value) => setB.has(value));
 
       interface KnownParent {
         isNonEsm: boolean;
         connections: Set<string>;
+        entries?: string[];
       }
       const knownParents: {
         [key: string]: KnownParent;
       } = {};
 
       const addKnownParent = (req: string, info: KnownParent) =>
-        (knownParents[req] = info);
+        (knownParents[req] = {
+          ...info,
+          entries: [
+            ...new Set([
+              ...(knownParents[req]?.entries || []),
+              ...(info.entries || []),
+            ]),
+          ],
+        });
+
+      const getKnownParent = (req: string, parents: NormalModule[]) => {
+        const knownParent = knownParents[req];
+        return Boolean(knownParents[req]) &&
+          setsEqual(createModuleSet(parents), knownParent.connections)
+          ? knownParent
+          : undefined;
+      };
 
       const moduleHasNonEsmDeps = (module: Module) =>
         module.dependencies.some(
@@ -494,13 +484,7 @@ export default class IsolatedExternalsPlugin {
         existingParents?: Maybe<Module>[]
       ): boolean => {
         const knownResult = knownParents[parent.identifier()];
-        const parents =
-          existingParents ||
-          [...compilation.moduleGraph.getIncomingConnections(parent)]
-            .filter((mod) => mod.originModule !== parent)
-            .map<Module | null>((mod) => mod.originModule)
-            .filter<Module>((m): m is Module => Boolean(m))
-            .filter((m) => m.identifier() !== parent.identifier());
+        const parents = existingParents || getAllParents(parent);
         const parentSet = createModuleSet(parents);
 
         try {
@@ -563,18 +547,14 @@ export default class IsolatedExternalsPlugin {
       const isNonEsmResult = (
         result: ResolveData,
         parent: Module,
-        parents: Maybe<Module>[]
+        parents: Maybe<NormalModule>[]
       ) => {
         const connections =
-          parents ||
-          [...compilation.moduleGraph.getIncomingConnections(parent)].map(
-            (c) => c.originModule
-          );
-        const knownParent = knownParents[parent.identifier()];
-        if (
-          knownParent &&
-          setsEqual(knownParent.connections, createModuleSet(connections))
-        ) {
+          parents.filter((p): p is NormalModule => Boolean(p)) ||
+          getAllParents(parent);
+        const knownParent = getKnownParent(result.request, connections);
+
+        if (knownParent) {
           logger.debug(
             'known parent: \n',
             parent.identifier(),
@@ -595,62 +575,173 @@ export default class IsolatedExternalsPlugin {
         return isNonEsm;
       };
 
+      const getResultKey = (result: ResolveData, parents: Module[]) =>
+        `${result.request}!${parents.map((p) => p.identifier()).join('!')}`;
+
+      const getUnpromisedRequest = (request: string, globalName: string) => {
+        const req = request.endsWith('/') ? request + 'index' : request;
+
+        const newRequest = `${req}?unpromise-external&globalName=${globalName}`;
+        return newRequest;
+      };
+
+      const updateResult = (
+        result: ResolveData,
+        isNonEsm: boolean,
+        entryNames: string[],
+        parents: Module[]
+      ) => {
+        const externalsBlocks = entryNames
+          .map((e) => finalIsolatedExternals[e])
+          .filter(Boolean);
+        const entryNamesStr = entryNames.join('", "');
+        const externalName = result.request;
+
+        const targetExternals = externalsBlocks
+          .map((block) => block[externalName])
+          .filter(Boolean);
+
+        if (!targetExternals.length) return;
+
+        addKnownParent(getResultKey(result, parents), {
+          isNonEsm,
+          connections: createModuleSet(parents),
+          entries: entryNames,
+        });
+
+        if (!isNonEsm) return;
+
+        logger.debug(
+          `unpromising entries "${entryNamesStr}" for external "${result.request}".`
+        );
+
+        const newRequest = getUnpromisedRequest(
+          result.request,
+          targetExternals[0].globalName
+        );
+
+        result.request = newRequest;
+
+        entryNames.forEach((entryName) => {
+          const externalsBlock = finalIsolatedExternals[entryName];
+          if (!externalsBlock) return;
+
+          const externalsReqs = Object.entries(externalsBlock);
+          const previousExternals = externalsReqs.slice(
+            0,
+            externalsReqs.findIndex(([key]) => key === externalName)
+          );
+          const targetExternal = externalsBlock[externalName];
+
+          unpromisedEntries[entryName] = [
+            ...new Set([
+              ...(unpromisedEntries[entryName] || []),
+              ...previousExternals.map(([, { globalName }]) => globalName),
+              targetExternal.globalName,
+            ]),
+          ];
+        });
+      };
+
+      const getAllParents = (
+        module: Module,
+        ids: string[] = []
+      ): NormalModule[] => {
+        const parents = [
+          ...compilation.moduleGraph.getIncomingConnections(module),
+        ]
+          .map((c) => c.originModule)
+          .filter((m): m is NormalModule => Boolean(m))
+          .filter((m) => m.identifier() !== module.identifier());
+        const newParents = parents.filter((p) => {
+          if (ids.includes(p.identifier())) return false;
+          ids.push(p.identifier());
+          return true;
+        });
+
+        return [
+          ...newParents,
+          ...newParents.flatMap((p) => getAllParents(p, ids)),
+        ];
+      };
+
       normalModuleFactory.hooks.beforeResolve.tap(
         'IsolatedExternalsPlugin',
         (result) => {
           try {
-            const parentModule = getParentModule(result);
-            const parents = [
-              ...compilation.moduleGraph.getIncomingConnections(parentModule),
-            ]
-              .map((c) => c.originModule)
-              .filter((m) => m?.identifier() !== parentModule.identifier());
+            if (
+              !Object.values(finalIsolatedExternals).some(
+                (ext) => ext[result.request]
+              )
+            )
+              return;
 
+            const parentModule = getParentModule(result);
+            const parents = getAllParents(parentModule);
+
+            logger.debug('checking', result.request, {
+              parents: parents.map((p) => p.identifier()),
+            });
             if (!parents.length) return;
 
-            const targetEntry = getTargetEntry(parentModule, parents);
-            if (!targetEntry) return;
-
-            const entryName = getTargetEntryNameFromResult(result, targetEntry);
-
-            const externalsBlock = finalIsolatedExternals[entryName];
-            const externalName = result.request;
-
-            const targetExternal = externalsBlock?.[externalName];
-            if (!targetExternal) return;
-
-            logger.debug(
-              `Checking dep "${result.request} for entry "${entryName}"`
+            const knownModule = getKnownParent(
+              getResultKey(result, parents),
+              parents
             );
+
+            if (knownModule) {
+              logger.debug(
+                `known module: \n`,
+                result.request,
+                '\n',
+                knownModule
+              );
+              updateResult(
+                result,
+                knownModule.isNonEsm,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                knownModule.entries!,
+                parents
+              );
+              return;
+            }
+
+            const entryNames = getTargetEntries(parentModule, parents);
+
+            if (
+              entryNames.every((n) =>
+                unpromisedEntries[n]?.includes(result.request)
+              )
+            ) {
+              logger.debug(
+                `unpromising request "${
+                  result.request
+                }" for previously unpromised entries "${entryNames.join(',')}".`
+              );
+
+              const newRequest = getUnpromisedRequest(
+                result.request,
+                entryNames.map(
+                  (n) => finalIsolatedExternals[n][result.request].globalName
+                )[0]
+              );
+
+              result.request = newRequest;
+              return;
+            }
+
+            if (
+              !entryNames.some(
+                (entryName) =>
+                  finalIsolatedExternals[entryName]?.[result.request]
+              )
+            ) {
+              return;
+            }
 
             const nonEsmInChain = isNonEsmResult(result, parentModule, parents);
-            if (!nonEsmInChain) return;
 
-            logger.debug(
-              `unpromising entry "${entryName}" for external "${result.request}".`
-            );
-
-            const req = result.request.endsWith('/')
-              ? result.request + 'index'
-              : result.request;
-
-            const newRequest = `${req}?unpromise-external&globalName=${targetExternal.globalName}`;
-
-            result.request = newRequest;
-
-            const externalsReqs = Object.entries(externalsBlock);
-            const previousExternals = externalsReqs.slice(
-              0,
-              externalsReqs.findIndex(([key]) => key === externalName)
-            );
-
-            unpromisedEntries[entryName] = [
-              ...new Set([
-                ...(unpromisedEntries[entryName] || []),
-                ...previousExternals.map(([, { globalName }]) => globalName),
-                targetExternal.globalName,
-              ]),
-            ];
+            updateResult(result, nonEsmInChain, entryNames, parents);
           } catch (err) {
             logger.warn('error setting up unpromise-externals', result.request);
             logger.error(err);
@@ -661,8 +752,7 @@ export default class IsolatedExternalsPlugin {
       );
 
       const updateEntries = async () => {
-        const existingEntries = { ...unpromisedEntries };
-        for (const entryName of Object.keys(existingEntries)) {
+        for (const entryName of Object.keys(this.unpromisedEntries)) {
           const entry = compilation.entries.get(entryName);
           if (!entry) {
             logger.debug('no entry', entryName);
@@ -684,8 +774,7 @@ export default class IsolatedExternalsPlugin {
             entryDep.request,
             /^\./.test(entryDep.request)
               ? entryDep.getContext() || process.cwd()
-              : '',
-            existingEntries
+              : ''
           );
 
           if (entryDep.request === newEntryRequest) {
@@ -703,7 +792,6 @@ export default class IsolatedExternalsPlugin {
 
           const newEntryDep = getEntryDep(entryName, newEntryRequest);
           if (!newEntryDep) {
-            logger.debug('no new entry module', entryName, entryDep.request);
             break;
           }
           logger.debug('replacing entry module', {
@@ -752,25 +840,25 @@ export default class IsolatedExternalsPlugin {
           }
 
           const parent = getParentModule(data);
-          const targetEntry = getTargetEntry(parent);
+          const entryNames = getTargetEntries(parent);
 
-          if (!targetEntry) {
+          if (!entryNames.length) {
             callOriginalExternalsPlugin();
             return;
           }
 
-          const entryName =
-            getRequestParam(
-              targetEntry.userRequest,
-              'isolatedExternalsEntry'
-            ) || '';
-          const targetExternal =
-            finalIsolatedExternals[entryName]?.[data.request];
+          const targetExternals = entryNames
+            .map(
+              (entryName) => finalIsolatedExternals[entryName]?.[data.request]
+            )
+            .filter(Boolean);
 
-          if (!targetExternal) {
+          if (!targetExternals.length) {
             callOriginalExternalsPlugin();
             return cb();
           }
+
+          const targetExternal = targetExternals[0];
 
           return cb(
             undefined,
