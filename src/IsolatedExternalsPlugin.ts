@@ -657,12 +657,7 @@ export default class IsolatedExternalsPlugin {
         'IsolatedExternalsPlugin',
         (result) => {
           try {
-            if (
-              !Object.values(finalIsolatedExternals).some(
-                (ext) => ext[result.request]
-              )
-            )
-              return;
+            if (!allIsolatedExternals[result.request]) return;
 
             const parentModule = getParentModule(result);
             if (!parentModule) return;
@@ -812,28 +807,35 @@ export default class IsolatedExternalsPlugin {
         () => void updateEntries()
       );
 
+      const basePathRegex = /^[^&?]+/;
+
       normalModuleFactory.hooks.factorize.tapAsync(
         'IsolatedExternalsPlugin',
         (data, cb) => {
-          const callOriginalExternalsPlugin = () =>
-            originalExternalsPlugin.apply(
+          const externalPath = basePathRegex.exec(data.request)?.[0] || '';
+          const callOriginalExternalsPlugin = () => {
+            return originalExternalsPlugin.apply(
               getPassthroughCompiler(
                 compiler,
                 normalModuleFactory,
                 (originalFactorize) => originalFactorize(data, cb)
               )
             );
+          };
 
-          if (!allIsolatedExternals[data.request]) {
+          if (!allIsolatedExternals[externalPath]) {
             callOriginalExternalsPlugin();
             return;
           }
 
-          const parent = getParentModule(data);
-          const entryNames = getTargetEntries(
-            parent as NormalModule,
-            getAllParents(parent)
-          );
+          if (data.request.includes('unpromise-external')) {
+            cb();
+            return;
+          }
+
+          const parent = getParentModule(data) as NormalModule;
+          const parents = getAllParents(parent);
+          const entryNames = getTargetEntries(parent, parents);
 
           if (!entryNames.length) {
             callOriginalExternalsPlugin();
@@ -842,13 +844,13 @@ export default class IsolatedExternalsPlugin {
 
           const targetExternals = entryNames
             .map(
-              (entryName) => finalIsolatedExternals[entryName]?.[data.request]
+              (entryName) => finalIsolatedExternals[entryName]?.[externalPath]
             )
             .filter(Boolean);
 
           if (!targetExternals.length) {
             callOriginalExternalsPlugin();
-            return cb();
+            return;
           }
 
           const targetExternal = targetExternals[0];
