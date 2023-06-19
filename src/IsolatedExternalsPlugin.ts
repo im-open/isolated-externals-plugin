@@ -563,8 +563,8 @@ export default class IsolatedExternalsPlugin {
         return isNonEsm;
       };
 
-      const getResultKey = (result: ResolveData, parents: Module[]) =>
-        `${result.request}!${parents.map((p) => p.identifier()).join('!')}`;
+      const getParentsKey = (parents: Module[]) =>
+        parents.map((p) => p.identifier()).join('!');
 
       const getUnpromisedRequest = (request: string, globalName: string) => {
         const req = request.endsWith('/') ? request + 'index' : request;
@@ -591,7 +591,7 @@ export default class IsolatedExternalsPlugin {
 
         if (!targetExternals.length) return;
 
-        addKnownParent(getResultKey(result, parents), {
+        addKnownParent(getParentsKey(parents), {
           isNonEsm,
           connections: createModuleSet(parents),
           entries: entryNames,
@@ -674,10 +674,7 @@ export default class IsolatedExternalsPlugin {
             });
             if (!parents.length) return;
 
-            const knownModule = getKnownParent(
-              getResultKey(result, parents),
-              parents
-            );
+            const knownModule = getKnownParent(getParentsKey(parents), parents);
 
             if (knownModule) {
               logger.debug(
