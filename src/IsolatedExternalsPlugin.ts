@@ -311,27 +311,26 @@ export default class IsolatedExternalsPlugin {
       const getParentModule = (result: ResolveData) =>
         compilation.moduleGraph.getParentModule(result.dependencies[0]);
 
+      const getEntryParams = (modules: NormalModule[]) =>
+        modules
+          .map(({ rawRequest }) => {
+            if (!rawRequest) return;
+
+            const entryName =
+              getRequestParam(rawRequest, 'isolatedExternalsEntry') ||
+              getRequestParam(rawRequest, 'unpromised-entry');
+
+            if (entryName) {
+              return entryName;
+            }
+          })
+          .filter((s): s is string => Boolean(s));
+
       const getTargetEntries = (
-        dependency: Maybe<Module>,
-        parents?: Maybe<Module>[]
+        dependency: NormalModule,
+        parents: NormalModule[]
       ): string[] => {
-        const dep = dependency as Maybe<NormalModule>;
-        if (!dep) {
-          return [];
-        }
-        const { rawRequest = '' } = dep || {};
-
-        if (rawRequest) {
-          const entryName =
-            getRequestParam(rawRequest, 'isolatedExternalsEntry') ||
-            getRequestParam(rawRequest, 'unpromised-entry');
-          if (entryName) {
-            return [entryName];
-          }
-        }
-
-        const connections = parents || getAllParents(dep);
-        const entries = connections.flatMap((conn) => getTargetEntries(conn));
+        const entries = getEntryParams([dependency, ...parents]);
         return [...new Set(entries)];
       };
 
@@ -440,9 +439,10 @@ export default class IsolatedExternalsPlugin {
             !['unknown', 'esm', 'self'].includes(dep.category) ||
             dep.constructor.name.includes('CommonJs')
         );
+
       const parentsHaveNonEsmDep = (
         parent: Module,
-        parents: Maybe<Module>[]
+        parents: Maybe<Module>[] = []
       ) => {
         if (!parents.length) {
           logger.debug(`top level parent: \n`, parent.identifier());
@@ -481,11 +481,13 @@ export default class IsolatedExternalsPlugin {
 
       const isNonEsmParent = (
         parent: Module,
-        existingParents?: Maybe<Module>[]
+        existingParents?: Module[]
       ): boolean => {
         const knownResult = knownParents[parent.identifier()];
-        const parents = existingParents || getAllParents(parent);
-        const parentSet = createModuleSet(parents);
+        const parents = existingParents;
+        const parentSet = parents
+          ? createModuleSet(parents)
+          : new Set<string>();
 
         try {
           if (knownResult && setsEqual(knownResult.connections, parentSet)) {
@@ -494,20 +496,9 @@ export default class IsolatedExternalsPlugin {
 
           const hasNonEsmDeps = moduleHasNonEsmDeps(parent);
           const isNonEsm =
-            hasNonEsmDeps || parentsHaveNonEsmDep(parent, parents);
-
-          if (parent.identifier().includes('react-query/devtools')) {
-            logger.debug('react-query/devtools', {
-              req: parent.identifier(),
-              hasNonEsmDeps,
-              isNonEsm,
-              deps: parent.dependencies.map((dep) => ({
-                category: dep.category,
-                id: (dep as ModuleDependency).request,
-                className: dep.constructor.name,
-              })),
-            });
-          }
+            hasNonEsmDeps || parents
+              ? parentsHaveNonEsmDep(parent, parents as Module[])
+              : false;
 
           addKnownParent(parent.identifier(), {
             isNonEsm,
@@ -547,12 +538,9 @@ export default class IsolatedExternalsPlugin {
       const isNonEsmResult = (
         result: ResolveData,
         parent: Module,
-        parents: Maybe<NormalModule>[]
+        parents: NormalModule[]
       ) => {
-        const connections =
-          parents.filter((p): p is NormalModule => Boolean(p)) ||
-          getAllParents(parent);
-        const knownParent = getKnownParent(result.request, connections);
+        const knownParent = getKnownParent(result.request, parents);
 
         if (knownParent) {
           logger.debug(
@@ -571,7 +559,7 @@ export default class IsolatedExternalsPlugin {
               result.dependencyType
             ),
             true)) ||
-          isNonEsmParent(parent, connections);
+          isNonEsmParent(parent, parents);
         return isNonEsm;
       };
 
@@ -677,6 +665,8 @@ export default class IsolatedExternalsPlugin {
               return;
 
             const parentModule = getParentModule(result);
+            if (!parentModule) return;
+
             const parents = getAllParents(parentModule);
 
             logger.debug('checking', result.request, {
@@ -706,7 +696,10 @@ export default class IsolatedExternalsPlugin {
               return;
             }
 
-            const entryNames = getTargetEntries(parentModule, parents);
+            const entryNames = getTargetEntries(
+              parentModule as NormalModule,
+              parents
+            );
 
             if (
               entryNames.every((n) =>
@@ -840,7 +833,10 @@ export default class IsolatedExternalsPlugin {
           }
 
           const parent = getParentModule(data);
-          const entryNames = getTargetEntries(parent);
+          const entryNames = getTargetEntries(
+            parent as NormalModule,
+            getAllParents(parent)
+          );
 
           if (!entryNames.length) {
             callOriginalExternalsPlugin();
