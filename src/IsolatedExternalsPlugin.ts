@@ -437,7 +437,7 @@ export default class IsolatedExternalsPlugin {
         module.dependencies.some(
           (dep) =>
             !['unknown', 'esm', 'self'].includes(dep.category) ||
-            dep.constructor.name.includes('CommonJs')
+            /commonjs/i.test(dep.constructor.name)
         );
 
       const parentsHaveNonEsmDep = (
@@ -582,7 +582,6 @@ export default class IsolatedExternalsPlugin {
         const externalsBlocks = entryNames
           .map((e) => finalIsolatedExternals[e])
           .filter(Boolean);
-        const entryNamesStr = entryNames.join('", "');
         const externalName = result.request;
 
         const targetExternals = externalsBlocks
@@ -599,10 +598,6 @@ export default class IsolatedExternalsPlugin {
 
         if (!isNonEsm) return;
 
-        logger.debug(
-          `unpromising entries "${entryNamesStr}" for external "${result.request}".`
-        );
-
         const newRequest = getUnpromisedRequest(
           result.request,
           targetExternals[0].globalName
@@ -615,17 +610,21 @@ export default class IsolatedExternalsPlugin {
           if (!externalsBlock) return;
 
           const externalsReqs = Object.entries(externalsBlock);
-          const previousExternals = externalsReqs.slice(
+          const dependentExternals = externalsReqs.slice(
             0,
-            externalsReqs.findIndex(([key]) => key === externalName)
+            externalsReqs.findIndex(([key]) => key === externalName) + 1
           );
-          const targetExternal = externalsBlock[externalName];
+
+          logger.debug(
+            `unpromising entries "${entryName}" for externals "${dependentExternals
+              .map(([n]) => n)
+              .join(',')}".`
+          );
 
           unpromisedEntries[entryName] = [
             ...new Set([
               ...(unpromisedEntries[entryName] || []),
-              ...previousExternals.map(([, { globalName }]) => globalName),
-              targetExternal.globalName,
+              ...dependentExternals.map(([, { globalName }]) => globalName),
             ]),
           ];
         });
@@ -737,64 +736,68 @@ export default class IsolatedExternalsPlugin {
       );
 
       const updateEntries = async () => {
-        for (const entryName of Object.keys(this.unpromisedEntries)) {
-          const entry = compilation.entries.get(entryName);
-          if (!entry) {
-            logger.debug('no entry', entryName);
-            break;
-          }
-          const entryDep = (entry.dependencies as ModuleDependency[]).find(
-            (dep) =>
-              (getRequestParam(dep.request, 'isolatedExternalsEntry') ||
-                getRequestParam(dep.request, 'unpromised-entry')) === entryName
-          );
-          if (!entryDep) {
-            logger.debug('no entry dependency', entryName);
-            break;
-          }
+        const entryUpdates = Object.keys(unpromisedEntries).map(
+          async (entryName) => {
+            const entry = compilation.entries.get(entryName);
+            if (!entry) {
+              logger.debug('no entry', entryName);
+              return;
+            }
+            const entryDep = (entry.dependencies as ModuleDependency[]).find(
+              (dep) =>
+                (getRequestParam(dep.request, 'isolatedExternalsEntry') ||
+                  getRequestParam(dep.request, 'unpromised-entry')) ===
+                entryName
+            );
+            if (!entryDep) {
+              logger.debug('no entry dependency', entryName);
+              return;
+            }
 
-          const newEntryRequest = getEntryDepsRequest(
-            entryName,
-            this.unpromisedEntryModuleLocation,
-            entryDep.request,
-            /^\./.test(entryDep.request)
-              ? entryDep.getContext() || process.cwd()
-              : ''
-          );
-
-          if (entryDep.request === newEntryRequest) {
-            logger.debug('no need to rebuild entry module', {
+            const newEntryRequest = getEntryDepsRequest(
               entryName,
-              request: entryDep.request,
+              this.unpromisedEntryModuleLocation,
+              entryDep.request,
+              /^\./.test(entryDep.request)
+                ? entryDep.getContext() || process.cwd()
+                : ''
+            );
+
+            if (entryDep.request === newEntryRequest) {
+              logger.debug('no need to rebuild entry module', {
+                entryName,
+                request: entryDep.request,
+              });
+              return;
+            }
+
+            logger.debug('Rebuilding entry:', {
+              entryName,
+              newEntryRequest,
             });
-            break;
-          }
 
-          logger.debug('Rebuilding entry:', {
-            entryName,
-            newEntryRequest,
-          });
-
-          const newEntryDep = getEntryDep(entryName, newEntryRequest);
-          if (!newEntryDep) {
-            break;
-          }
-          logger.debug('replacing entry module', {
-            entryName,
-            newEntryDep,
-          });
-          entry.dependencies = entry.dependencies.filter(
-            (dep) => dep !== entryDep
-          );
-
-          const rebuilding = new Promise<void>((resolve, reject) => {
-            compilation.addEntry('', newEntryDep, entryName, (err) => {
-              if (err) return reject(err);
-              resolve();
+            const newEntryDep = getEntryDep(entryName, newEntryRequest);
+            if (!newEntryDep) {
+              return;
+            }
+            logger.debug('replacing entry module', {
+              entryName,
+              newEntryDep,
             });
-          });
-          await rebuilding;
-        }
+            entry.dependencies = entry.dependencies.filter(
+              (dep) => dep !== entryDep
+            );
+
+            const rebuilding = new Promise<void>((resolve, reject) => {
+              compilation.addEntry('', newEntryDep, entryName, (err) => {
+                if (err) return reject(err);
+                resolve();
+              });
+            });
+            return await rebuilding;
+          }
+        );
+        await Promise.all(entryUpdates);
       };
 
       compilation.hooks.buildModule.tap(
