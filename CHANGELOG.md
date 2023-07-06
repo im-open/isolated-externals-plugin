@@ -1,3 +1,9 @@
+## [2.4.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.4.0...v2.4.1) (2023-07-06)
+
+### Fix
+
+- ensuring all entries are always updated as needed ([a33dc0e](https://github.com/WTW-IM/isolated-externals-plugin/commit/a33dc0e0a08bf22b38c8cc10d412a6e9f97c4b1a))
+
 # [2.4.0](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.3.1...v2.4.0) (2023-06-19)
 
 ### Fix
