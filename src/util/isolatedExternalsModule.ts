@@ -46,12 +46,10 @@ function createExternalsObject(
       );
       orderedDeps = [...orderedDeps, externalLoad];
       Object.defineProperty(extObj, globalName, {
-        get: async (): Promise<unknown | undefined> => {
+        get: async () => {
           const foundContext = await externalLoad;
-          return (
-            getValue(globalName, foundContext) ||
-            getValue(globalName, targetGlobal)
-          );
+          return (getValue(globalName, foundContext) ||
+            getValue(globalName, targetGlobal)) as unknown;
         },
       });
       return extObj;
