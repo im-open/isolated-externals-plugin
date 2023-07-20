@@ -35,7 +35,8 @@ beforeAll((done) => {
       component: externalsConfig,
     },
     path.join(__dirname, '../../dist/util/isolatedExternalsModule.js'),
-    path.join(__dirname, '../../dist/util/unpromisedEntry.js')
+    path.join(__dirname, '../../dist/util/unpromisedEntry.js'),
+    path.join(__dirname, '../../dist/util/unpromisedExternal.js')
   );
   webpackOptions = {
     mode: 'development',
@@ -100,4 +101,6 @@ it('should have an unpromised-entry', () => {
 it('should not have placeholders', () => {
   expect(fileResult).not.toContain('DEPS_PLACEHOLDER');
   expect(fileResult).not.toContain('RELOAD_PLACEHOLDER');
+  expect(fileResult).not.toContain('[SYNCED_EXTERNALS_MODULE_NAME]');
+  expect(fileResult).not.toContain('THE_GLOBAL');
 });

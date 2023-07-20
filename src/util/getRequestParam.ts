@@ -8,3 +8,8 @@ export default function getRequestParam(
   const value = entryUrl.searchParams.get(param);
   return value;
 }
+
+export function getSearchString(request: string): string {
+  const entryUrl = new URL('https://www.example.com/' + request);
+  return entryUrl.search;
+}
