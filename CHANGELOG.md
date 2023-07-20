@@ -1,3 +1,14 @@
+## [2.4.2](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.4.1...v2.4.2) (2023-07-20)
+
+### Build
+
+- fixing lint issues ([fdf4afd](https://github.com/WTW-IM/isolated-externals-plugin/commit/fdf4afda89683041eb6d5f2ea7246bf8dcc745b7))
+- updating npm version in CI ([5b10e81](https://github.com/WTW-IM/isolated-externals-plugin/commit/5b10e817107dcb88dec776b292c78cc811e25670))
+
+### Fix
+
+- ensuring unpromised external module resolution works ([ac094f3](https://github.com/WTW-IM/isolated-externals-plugin/commit/ac094f3d54099fe9cad39cd1b45f303bceae52df))
+
 ## [2.4.1](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.4.0...v2.4.1) (2023-07-06)
 
 ### Fix
