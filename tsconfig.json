@@ -17,5 +17,10 @@
     "target": "es2017"
   },
   "include": ["src"],
-  "exclude": ["src/util", "**/**/__tests__", "src/testing-support"]
+  "references": [
+    {
+      "path": "./src/util/tsconfig.json"
+    }
+  ],
+  "exclude": ["src/util", "**/**/__tests__", "src/testing-support"],
 }

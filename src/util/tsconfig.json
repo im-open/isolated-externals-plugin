@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "isolatedModules": false,
+    "composite": true,
     "outDir": "../../dist/util",
     "target": "es5"
   },

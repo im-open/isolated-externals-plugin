@@ -1,7 +1,6 @@
 type Maybe<T> = T | undefined | null;
 
 export const createGetProxy = <
-  // eslint-disable-next-line @typescript-eslint/ban-types
   T extends object,
   R extends NonNullable<T[keyof T]>
 >(

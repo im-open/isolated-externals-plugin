@@ -36,4 +36,7 @@ const syncedModulesProxy = new Proxy<{
   }
 );
 
-module.exports = syncedModulesProxy[THE_GLOBAL];
+const theExternal = syncedModulesProxy[THE_GLOBAL];
+Object.assign(exports, theExternal, {
+  default: theExternal,
+});

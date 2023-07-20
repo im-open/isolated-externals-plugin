@@ -8,8 +8,8 @@
     "dist"
   ],
   "scripts": {
-    "test": "npm run lint && npm run build && jest",
-    "build": "tsc && cd src/util && tsc",
+    "test": "npm run lint && jest",
+    "build": "tsc --build",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx ./src",
     "pre-commit": "lint-staged",
     "prepublishOnly": "npm run build",
