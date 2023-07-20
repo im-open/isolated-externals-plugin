@@ -1,4 +1,4 @@
-import React, { createElement, Fragment, useState } from 'react';
+import { createElement, Fragment, useState } from 'react';
 import ReactDOM from 'react-dom';
 import Modal from 'react-modal';
 

@@ -4,15 +4,15 @@ import {
   ExternalModule,
   ExternalsPlugin,
   NormalModule,
-  dependencies,
   Module,
   EntryPlugin,
   ResolveData,
   Compilation,
 } from 'webpack';
+import ModuleDependency from 'webpack/lib/dependencies/ModuleDependency';
 import { validate } from 'schema-utils';
 import { JSONSchema7 } from 'schema-utils/declarations/validate';
-import path from 'path';
+import * as path from 'path';
 
 import {
   Externals,
@@ -24,7 +24,6 @@ import getRequestParam from './util/getRequestParam';
 
 type Maybe<T> = T | undefined | null;
 
-type ModuleDependency = dependencies.ModuleDependency;
 type WebpackExternals = Configuration['externals'];
 type CompileCallback = Parameters<Compiler['hooks']['compile']['tap']>[1];
 type CompilationParams = ConstructorParameters<typeof Compilation>[1];
@@ -43,7 +42,10 @@ type FactorizeCallback = Parameters<
 >[1];
 
 interface UnpromisedEntries {
-  [key: string]: string[];
+  [key: string]: {
+    request: string;
+    globalName: string;
+  }[];
 }
 
 export interface IsolatedExternalsElement {
@@ -140,7 +142,8 @@ export default class IsolatedExternalsPlugin {
   constructor(
     readonly config: IsolatedExternals = {},
     readonly externalsModuleLocation: string = '',
-    readonly unpromisedEntryModuleLocation: string = ''
+    readonly unpromisedEntryModuleLocation: string = '',
+    readonly unpromisedExternalModuleLocation: string = ''
   ) {
     validate(configSchema, config, {
       name: 'IsolatedExternalsPlugin',
@@ -152,6 +155,9 @@ export default class IsolatedExternalsPlugin {
     this.unpromisedEntryModuleLocation =
       unpromisedEntryModuleLocation ||
       path.join(__dirname, 'util', 'unpromisedEntry.js');
+    this.unpromisedExternalModuleLocation =
+      unpromisedExternalModuleLocation ||
+      path.join(__dirname, 'util', 'unpromisedExternal.js');
     this.moduleDir = path.dirname(this.externalsModuleLocation);
     this.unpromisedEntries = {};
   }
@@ -357,6 +363,10 @@ export default class IsolatedExternalsPlugin {
         const unpromiseDeps = this.unpromisedEntries[entryName];
         if (!unpromiseDeps) return request;
 
+        const unpromiseGlobals = unpromiseDeps.map(
+          ({ globalName }) => globalName
+        );
+
         const originalRequest =
           getRequestParam(replacedRequest, 'originalRequest') ||
           replacedRequest;
@@ -383,7 +393,7 @@ export default class IsolatedExternalsPlugin {
         depRequest = updateRequestWithParam(
           depRequest,
           'deps',
-          unpromiseDeps.join(',')
+          unpromiseGlobals.join(',')
         );
 
         return depRequest;
@@ -567,9 +577,7 @@ export default class IsolatedExternalsPlugin {
         parents.map((p) => p.identifier()).join('!');
 
       const getUnpromisedRequest = (request: string, globalName: string) => {
-        const req = request.endsWith('/') ? request + 'index' : request;
-
-        const newRequest = `${req}?unpromise-external&globalName=${globalName}`;
+        const newRequest = `${this.unpromisedExternalModuleLocation}?unpromise-external&globalName=${globalName}`;
         return newRequest;
       };
 
@@ -624,7 +632,10 @@ export default class IsolatedExternalsPlugin {
           unpromisedEntries[entryName] = [
             ...new Set([
               ...(unpromisedEntries[entryName] || []),
-              ...dependentExternals.map(([, { globalName }]) => globalName),
+              ...dependentExternals.map(([request, { globalName }]) => ({
+                request,
+                globalName,
+              })),
             ]),
           ];
         });
@@ -659,6 +670,7 @@ export default class IsolatedExternalsPlugin {
             if (!allIsolatedExternals[result.request]) return;
 
             const parentModule = getParentModule(result);
+
             if (!parentModule) return;
 
             const parents = getAllParents(parentModule);
@@ -694,7 +706,9 @@ export default class IsolatedExternalsPlugin {
 
             if (
               entryNames.every((n) =>
-                unpromisedEntries[n]?.includes(result.request)
+                unpromisedEntries[n]?.find(
+                  ({ request }) => request === result.request
+                )
               )
             ) {
               logger.debug(
@@ -736,8 +750,8 @@ export default class IsolatedExternalsPlugin {
       );
 
       const updateEntries = async () => {
-        const entryUpdates = Object.keys(unpromisedEntries).map(
-          async (entryName) => {
+        const entryUpdates = Object.entries(unpromisedEntries).map(
+          async ([entryName]) => {
             const entry = compilation.entries.get(entryName);
             if (!entry) {
               logger.debug('no entry', entryName);
@@ -815,6 +829,11 @@ export default class IsolatedExternalsPlugin {
       normalModuleFactory.hooks.factorize.tapAsync(
         'IsolatedExternalsPlugin',
         (data, cb) => {
+          if (data.request.includes('unpromise-external')) {
+            cb();
+            return;
+          }
+
           const externalPath = basePathRegex.exec(data.request)?.[0] || '';
           const callOriginalExternalsPlugin = () => {
             return originalExternalsPlugin.apply(
@@ -828,11 +847,6 @@ export default class IsolatedExternalsPlugin {
 
           if (!allIsolatedExternals[externalPath]) {
             callOriginalExternalsPlugin();
-            return;
-          }
-
-          if (data.request.includes('unpromise-external')) {
-            cb();
             return;
           }
 
@@ -885,6 +899,7 @@ export default class IsolatedExternalsPlugin {
     compiler.hooks.compilation.tap('IsolatedExternalsPlugin', (compilation) => {
       compilation.fileDependencies.add(this.externalsModuleLocation);
       compilation.fileDependencies.add(this.unpromisedEntryModuleLocation);
+      compilation.fileDependencies.add(this.unpromisedExternalModuleLocation);
     });
   }
 }
