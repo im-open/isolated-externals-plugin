@@ -23,11 +23,7 @@ module.exports = {
       plugins: ['@typescript-eslint'],
       parser: '@typescript-eslint/parser',
       parserOptions: {
-        project: [
-          './tsconfig.json',
-          './src/util/tsconfig.json',
-          './src/__tests__/tsconfig.json',
-        ],
+        project: ['./tsconfig.json', './src/__tests__/tsconfig.json'],
       },
       rules: {
         '@typescript-eslint/ban-ts-ignore': 0,
