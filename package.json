@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/WTW-IM/isolated-externals-plugin.git"
+    "url": "git+https://github.com/im-open/isolated-externals-plugin.git"
   },
   "keywords": [
     "Web Components",
@@ -32,9 +32,9 @@
   "author": "Steve Matney",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/WTW-IM/isolated-externals-plugin/issues"
+    "url": "https://github.com/im-open/isolated-externals-plugin/issues"
   },
-  "homepage": "https://github.com/WTW-IM/isolated-externals-plugin#readme",
+  "homepage": "https://github.com/im-open/isolated-externals-plugin#readme",
   "lint-staged": {
     "src/**/*.(j|t)s?(x)": [
       "prettier --write",
@@ -69,7 +69,7 @@
     "@typescript-eslint/parser": "^6.1.0",
     "ajv": "^8.11.2",
     "babel-loader": "^9.1.3",
-    "conventional-changelog-eslint": "^3.0.9",
+    "conventional-changelog-eslint": "^6.0.0",
     "eslint": "^8.45.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-plugin-react": "^7.22.0",
