@@ -78,6 +78,11 @@ const configSchema: JSONSchema7 = {
           properties: {
             url: { type: 'string' },
             globalName: { type: 'string' },
+            urlTransformer: { type: 'string' },
+            includeImports: {
+              type: ['string', 'array'],
+              items: { type: 'string' },
+            },
           },
         },
       },
@@ -178,10 +183,13 @@ export default class IsolatedExternalsPlugin {
           const finalExts = Object.entries(
             exts
           ).reduce<FinalIsolatedExternalsElement>(
-            (allExts, [packageName, ext]) => ({
-              ...allExts,
-              [packageName]: {
+            (allExts, [packageName, ext]) => {
+              const finalExt = {
                 ...ext,
+              };
+              delete finalExt.includeImports;
+              const packageConfig = {
+                ...finalExt,
                 globalName:
                   ext.globalName ||
                   (normalizedExistingExternals as Record<
@@ -189,8 +197,33 @@ export default class IsolatedExternalsPlugin {
                     string | undefined
                   >)[packageName] ||
                   packageName,
-              },
-            }),
+              };
+
+              const extraImports = Array.isArray(ext.includeImports)
+                ? ext.includeImports
+                : ext.includeImports
+                ? [ext.includeImports]
+                : [];
+              const extraImportsConfig = extraImports.reduce(
+                (allImports, importName) => {
+                  return {
+                    ...allImports,
+                    [importName]: {
+                      ...packageConfig,
+                    },
+                  };
+                },
+                {}
+              );
+
+              return {
+                ...allExts,
+                ...extraImportsConfig,
+                [packageName]: {
+                  ...packageConfig,
+                },
+              };
+            },
             {}
           );
           return { ...finalExternals, [entryName]: finalExts };

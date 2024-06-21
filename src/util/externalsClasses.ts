@@ -1,7 +1,8 @@
 export interface ExternalInfo {
-  globalName?: string;
   url: string;
+  globalName?: string;
   urlTransformer?: string;
+  includeImports?: string | string[];
 }
 
 export interface Externals {
