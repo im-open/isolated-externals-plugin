@@ -1,3 +1,21 @@
+# [2.5.0](https://github.com/im-open/isolated-externals-plugin/compare/v2.4.2...v2.5.0) (2024-06-24)
+
+### Build
+
+- using im-open instead of WTW-IM ([d09b245](https://github.com/im-open/isolated-externals-plugin/commit/d09b24512502e27d30cc2d70bc6e0d212fc538ac))
+
+### Fix
+
+- ensuring we can recover when Safari Private Window caching fails ([ea99b99](https://github.com/im-open/isolated-externals-plugin/commit/ea99b99aabad22f77d387858d4eaa3b96de0187a))
+
+### New
+
+- allowing extra import paths to be externalized ([4eb6444](https://github.com/im-open/isolated-externals-plugin/commit/4eb6444632a087bec875e5a76d56c21903b67fbd))
+
+### Upgrade
+
+- upgrading to latest semantic-release ([822872c](https://github.com/im-open/isolated-externals-plugin/commit/822872cc83ce6b30d116bc063360956cdb916ca9))
+
 ## [2.4.2](https://github.com/WTW-IM/isolated-externals-plugin/compare/v2.4.1...v2.4.2) (2023-07-20)
 
 ### Build
