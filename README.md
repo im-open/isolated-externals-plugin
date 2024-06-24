@@ -1,6 +1,6 @@
 # isolated-externals-plugin
 
-[![Build Status](https://travis-ci.com/WTW-IM/isolated-externals-plugin.svg?branch=master)](https://travis-ci.com/github/WTW-IM/isolated-externals-plugin)
+![Build Status](https://github.com/im-open/isolated-externals-plugin/actions/workflows/main.yml/badge.svg)
 [![npm version](https://badge.fury.io/js/isolated-externals-plugin.svg)](https://badge.fury.io/js/isolated-externals-plugin)
 
 ## Installation

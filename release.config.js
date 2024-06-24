@@ -35,7 +35,7 @@ const extraPlugins = isMainBranch
   : [];
 
 module.exports = {
-  repositoryUrl: 'git@github.com:WTW-IM/isolated-externals-plugin.git',
+  repositoryUrl: 'git@github.com:im-open/isolated-externals-plugin.git',
   branches: [
     'main',
     {

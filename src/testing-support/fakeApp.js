@@ -2,6 +2,12 @@ import { createElement, Fragment, useState } from 'react';
 import ReactDOM from 'react-dom';
 import Modal from 'react-modal';
 
+// special imports
+import React from './fakeReact';
+import { createRoot } from './fakeReactDomClient';
+import { renderToString } from './fakeReactDomServer';
+console.log({ React, createRoot, renderToString });
+
 export default function fake() {
   const answer = 1 + 1;
   return answer;

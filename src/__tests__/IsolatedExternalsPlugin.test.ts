@@ -1,19 +1,23 @@
 import path from 'path';
 import webpack from 'webpack';
-import IsolatedExternalsPlugin from '../IsolatedExternalsPlugin';
+import IsolatedExternalsPlugin, {
+  IsolatedExternalsElement,
+} from '../IsolatedExternalsPlugin';
 import { execSync } from 'child_process';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 
 let thePlugin: IsolatedExternalsPlugin;
 let webpackOptions: webpack.Configuration;
-const externalsConfig = {
+const externalsConfig: IsolatedExternalsElement = {
   react: {
     url: 'https://unpkg.com/react@17/umd/react.development.js',
     globalName: 'React',
+    includeImports: 'react-special',
   },
   ['react-dom']: {
     url: 'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
     globalName: 'ReactDOM',
+    includeImports: ['react-dom/client', 'react-dom/server'],
   },
   ['@microsoft/applicationinsights-web']: {
     url:
@@ -87,12 +91,33 @@ test.each(
 });
 
 test.each([
-  ['React', /react.*\?unpromise-external&globalName=React/],
-  ['ReactDOM', /react-dom.*\?unpromise-external&globalName=ReactDOM/],
-])('fileResult contains unpromised externals: %s', (globalName, regex) => {
-  expect(fileResult).toMatch(regex);
-  expect(fileResult).toContain(`syncedModulesProxy["${globalName}"]`);
-});
+  {
+    globalName: 'React',
+    regex: /react(?!-special).*\?unpromise-external&globalName=React/,
+  },
+  {
+    globalName: 'React',
+    regex: /\/\*! react-special \*\/ "react"/,
+  },
+  {
+    globalName: 'ReactDOM',
+    regex: /react-dom(?!\/(client|server)).*\?unpromise-external&globalName=ReactDOM/,
+  },
+  {
+    globalName: 'ReactDOM',
+    regex: /\/\*! react-dom\/client \*\/ "react-dom"/,
+  },
+  {
+    globalName: 'ReactDOM',
+    regex: /\/\*! react-dom\/server \*\/ "react-dom"/,
+  },
+])(
+  'fileResult contains unpromised externals for $globalName matching "$regex"',
+  ({ globalName, regex }) => {
+    expect(fileResult).toMatch(regex);
+    expect(fileResult).toContain(`syncedModulesProxy["${globalName}"]`);
+  }
+);
 
 it('should have an unpromised-entry', () => {
   expect(fileResult).toContain('unpromised-entry');

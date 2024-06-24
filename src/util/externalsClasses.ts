@@ -1,7 +1,8 @@
 export interface ExternalInfo {
-  globalName?: string;
   url: string;
+  globalName?: string;
   urlTransformer?: string;
+  includeImports?: string | string[];
 }
 
 export interface Externals {
@@ -156,8 +157,8 @@ export class CachedExternal {
     void this.load();
   }
 
-  async getCache(): Promise<CacheLike> {
-    if (this.cachePromise) return await this.cachePromise;
+  async getCache(forceStatic = false): Promise<CacheLike> {
+    if (this.cachePromise && !forceStatic) return await this.cachePromise;
 
     /*
      * This covers any browsers without the caches API,
@@ -165,6 +166,8 @@ export class CachedExternal {
      * https://bugzilla.mozilla.org/show_bug.cgi?id=1724607
      */
     try {
+      if (forceStatic) throw new Error('Forcing static cache...');
+
       const staticCachePromise = new Promise<CacheLike>((res) => {
         setTimeout(() => res(new StaticCache()), 100);
       });
@@ -224,15 +227,31 @@ export class CachedExternal {
     });
   }
 
-  async loadResponse(): Promise<Response | undefined> {
-    const cache = await this.getCache();
+  async loadResponse(forceStatic = false): Promise<Response | undefined> {
+    const cache = await this.getCache(forceStatic);
     const cacheMatch = await cache.match(this.url);
     if (cacheMatch) return cacheMatch;
 
-    await cache.add(this.url);
-    const response = await cache.match(this.url);
+    try {
+      await cache.add(this.url);
+    } catch (er) {
+      if (!forceStatic) {
+        console.warn('Failed to cache external:', this.url);
+        console.error(er);
+      }
+    }
+    let response = await cache.match(this.url);
 
-    if (!response) return;
+    if (!response) {
+      if (forceStatic) {
+        return;
+      }
+
+      response = await this.loadResponse(true);
+      if (!response) {
+        return;
+      }
+    }
 
     if (response.redirected) {
       await cache.put(response.url, response.clone());

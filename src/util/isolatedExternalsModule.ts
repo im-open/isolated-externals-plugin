@@ -36,7 +36,7 @@ function createExternalsObject(
     externalsInfo
   ).reduce<Record<string, unknown>>(
     (extObj, { url, globalName, urlTransformer }) => {
-      if (!globalName) return extObj;
+      if (!globalName || extObj[globalName]) return extObj;
 
       const targetGlobal = getGlobal();
       const externalLoad = loadExternal(
